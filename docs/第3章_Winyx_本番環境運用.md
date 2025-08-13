@@ -9,6 +9,7 @@
 ### 3.1.1 Nginxのインストールと基本設定
 
 #### インストール
+- [ ] Nginxのインストール
 ```bash
 sudo apt update
 sudo apt install nginx -y
@@ -16,6 +17,7 @@ sudo systemctl enable nginx
 ```
 
 #### 基本設定ファイルの作成
+- [ ] Nginx設定ファイルの作成
 ```bash
 sudo vim /etc/nginx/sites-available/winyx
 ```
@@ -72,6 +74,7 @@ server {
 ```
 
 #### 設定の有効化
+- [ ] Nginx設定の有効化
 ```bash
 sudo ln -s /etc/nginx/sites-available/winyx /etc/nginx/sites-enabled/
 sudo nginx -t
@@ -81,17 +84,20 @@ sudo systemctl restart nginx
 ### 3.1.2 SSL/TLS証明書の設定（Let's Encrypt）
 
 #### Certbotのインストール
+- [ ] Certbotのインストール
 ```bash
 sudo apt install certbot python3-certbot-nginx -y
 ```
 
 #### SSL証明書の取得
+- [ ] SSL証明書の取得
 ```bash
 sudo certbot --nginx -d your-domain.com -d www.your-domain.com \
   --non-interactive --agree-tos -m admin@your-domain.com
 ```
 
 #### 自動更新の設定
+- [ ] SSL証明書の自動更新設定
 ```bash
 # 更新テスト
 sudo certbot renew --dry-run
@@ -101,6 +107,7 @@ sudo systemctl status certbot.timer
 ```
 
 #### セキュリティヘッダーの追加
+- [ ] セキュリティヘッダーの設定
 ```bash
 sudo vim /etc/nginx/snippets/security-headers.conf
 ```
@@ -115,7 +122,7 @@ add_header Content-Security-Policy "default-src 'self' https:; script-src 'self'
 add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 ```
 
-サイト設定に含める：
+- [ ] サイト設定にセキュリティヘッダーを含める：
 ```nginx
 server {
     # ... 既存の設定 ...
@@ -130,20 +137,24 @@ server {
 ### 3.2.1 ファイアウォール設定（UFW）
 
 #### UFWのインストールと基本設定
+- [ ] UFWのインストール
 ```bash
 sudo apt install ufw -y
 
 # デフォルトポリシー設定
+- [ ] デフォルトポリシーの設定
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
 
 # 必要なポートを開放
+- [ ] 必要なポートの開放
 sudo ufw allow 22/tcp    # SSH（後でポート変更推奨）
 sudo ufw allow 80/tcp    # HTTP
 sudo ufw allow 443/tcp   # HTTPS
 sudo ufw allow 3306/tcp  # MySQL（内部接続のみ推奨）
 
 # ファイアウォール有効化
+- [ ] ファイアウォールの有効化
 sudo ufw enable
 sudo ufw status verbose
 ```
@@ -151,6 +162,7 @@ sudo ufw status verbose
 ### 3.2.2 SSH強化設定
 
 #### SSH設定の変更
+- [ ] SSH設定ファイルの編集
 ```bash
 sudo vim /etc/ssh/sshd_config
 ```
@@ -168,6 +180,7 @@ AllowUsers your-username            # 特定ユーザーのみ許可
 ```
 
 #### SSH鍵の設定（まだの場合）
+- [ ] SSH鍵の生成と登録
 ```bash
 # ローカルマシンで鍵生成
 ssh-keygen -t ed25519 -C "your-email@example.com"
@@ -177,6 +190,7 @@ ssh-copy-id -i ~/.ssh/id_ed25519.pub user@server-ip
 ```
 
 #### SSH設定の反映
+- [ ] SSH設定の反映とポート変更
 ```bash
 sudo systemctl restart sshd
 
@@ -188,10 +202,13 @@ sudo ufw delete allow 22/tcp
 ### 3.2.3 Fail2ban設定（ブルートフォース対策）
 
 #### インストールと設定
+- [ ] Fail2banのインストール
 ```bash
 sudo apt install fail2ban -y
+```
 
-# 設定ファイル作成
+- [ ] Fail2ban設定ファイルの作成
+```bash
 sudo vim /etc/fail2ban/jail.local
 ```
 
@@ -226,6 +243,7 @@ logpath = /var/log/nginx/access.log
 ```
 
 #### Fail2banの起動
+- [ ] Fail2banの起動と有効化
 ```bash
 sudo systemctl enable fail2ban
 sudo systemctl start fail2ban
@@ -239,6 +257,7 @@ sudo fail2ban-client status
 ### 3.3.1 MySQL/MariaDBチューニング
 
 #### 設定ファイルの最適化
+- [ ] MySQL/MariaDB設定ファイルの作成
 ```bash
 sudo vim /etc/mysql/mariadb.conf.d/99-winyx.cnf
 ```
@@ -278,6 +297,7 @@ expire_logs_days = 7
 ```
 
 #### 設定の反映
+- [ ] MySQL設定の反映
 ```bash
 sudo systemctl restart mysql
 ```
@@ -285,6 +305,7 @@ sudo systemctl restart mysql
 ### 3.3.2 定期バックアップの自動化
 
 #### バックアップスクリプトの作成
+- [ ] バックアップスクリプトの作成
 ```bash
 sudo vim /var/www/winyx/scripts/backup_database.sh
 ```
@@ -324,6 +345,7 @@ echo "Backup completed: ${BACKUP_FILE}"
 ```
 
 #### 実行権限とcron設定
+- [ ] バックアップのcron設定
 ```bash
 sudo chmod +x /var/www/winyx/scripts/backup_database.sh
 
@@ -342,6 +364,7 @@ sudo crontab -e
 ### 3.4.1 Redis設定の最適化
 
 #### 設定ファイルの編集
+- [ ] Redis設定ファイルの編集
 ```bash
 sudo vim /etc/redis/redis.conf
 ```
@@ -369,11 +392,13 @@ loglevel notice
 ```
 
 #### 設定の反映
+- [ ] Redis設定の反映
 ```bash
 sudo systemctl restart redis-server
 ```
 
 #### 接続テスト
+- [ ] Redis接続テスト
 ```bash
 redis-cli -a your_redis_password ping
 ```
@@ -385,6 +410,7 @@ redis-cli -a your_redis_password ping
 ### 3.5.1 ログローテーション設定
 
 #### アプリケーションログの設定
+- [ ] ログローテーション設定ファイルの作成
 ```bash
 sudo vim /etc/logrotate.d/winyx
 ```
@@ -408,13 +434,16 @@ sudo vim /etc/logrotate.d/winyx
 ### 3.5.2 システム監視（Prometheus + Grafana）
 
 #### Prometheusのインストール
+- [ ] Prometheusのダウンロードとインストール
 ```bash
 # Prometheusダウンロード
 wget https://github.com/prometheus/prometheus/releases/download/v2.45.0/prometheus-2.45.0.linux-amd64.tar.gz
 tar xvf prometheus-2.45.0.linux-amd64.tar.gz
 sudo mv prometheus-2.45.0.linux-amd64 /opt/prometheus
+```
 
-# 設定ファイル
+- [ ] Prometheus設定ファイルの作成
+```bash
 sudo vim /opt/prometheus/prometheus.yml
 ```
 
@@ -437,12 +466,15 @@ scrape_configs:
 ```
 
 #### Node Exporterのインストール
+- [ ] Node Exporterのダウンロードとインストール
 ```bash
 wget https://github.com/prometheus/node_exporter/releases/download/v1.6.0/node_exporter-1.6.0.linux-amd64.tar.gz
 tar xvf node_exporter-1.6.0.linux-amd64.tar.gz
 sudo mv node_exporter-1.6.0.linux-amd64/node_exporter /usr/local/bin/
+```
 
-# systemdサービス作成
+- [ ] Node Exporterのsystemdサービス作成
+```bash
 sudo vim /etc/systemd/system/node_exporter.service
 ```
 
@@ -462,12 +494,14 @@ WantedBy=multi-user.target
 ```
 
 #### Grafanaのインストール
+- [ ] Grafanaリポジトリの追加
 ```bash
-# Grafanaリポジトリ追加
 wget -q -O - https://packages.grafana.com/gpg.key | sudo apt-key add -
 echo "deb https://packages.grafana.com/oss/deb stable main" | sudo tee /etc/apt/sources.list.d/grafana.list
+```
 
-# インストール
+- [ ] Grafanaのインストールと起動
+```bash
 sudo apt update
 sudo apt install grafana -y
 
@@ -479,6 +513,7 @@ sudo systemctl start grafana-server
 ### 3.5.3 アラート設定
 
 #### Alertmanagerの設定
+- [ ] Alertmanager設定ファイルの作成
 ```bash
 sudo vim /opt/prometheus/alertmanager.yml
 ```
@@ -512,6 +547,7 @@ receivers:
 ### 3.6.1 GitHub Actions設定
 
 #### ワークフローファイルの作成
+- [ ] GitHub Actionsワークフローファイルの作成
 ```bash
 vim /var/www/winyx/.github/workflows/deploy.yml
 ```
@@ -560,6 +596,8 @@ jobs:
 ```
 
 #### シークレット設定
+- [ ] GitHubシークレットの設定
+
 GitHubリポジトリの Settings > Secrets and variables > Actions で以下を設定：
 - `VPS_HOST`: VPSのIPアドレス
 - `VPS_USER`: SSHユーザー名
@@ -568,6 +606,7 @@ GitHubリポジトリの Settings > Secrets and variables > Actions で以下を
 ### 3.6.2 自動デプロイスクリプト
 
 #### デプロイスクリプトの作成
+- [ ] 自動デプロイスクリプトの作成
 ```bash
 vim /var/www/winyx/scripts/deploy.sh
 ```
@@ -617,6 +656,7 @@ echo "Deployment completed successfully!"
 ### 3.7.1 完全バックアップ戦略
 
 #### システム全体のバックアップスクリプト
+- [ ] 完全バックアップスクリプトの作成
 ```bash
 vim /var/www/winyx/scripts/full_backup.sh
 ```
@@ -665,6 +705,7 @@ echo "Backup completed: ${BACKUP_DIR}"
 ### 3.7.2 リカバリ手順書
 
 #### データベースリストア
+- [ ] データベースのリストア手順の確認
 ```bash
 # バックアップから復元
 gunzip < /var/backups/winyx/20240101_120000/database/all_databases.sql.gz | mysql -u root -p
@@ -674,6 +715,7 @@ gunzip < backup.sql.gz | mysql -u root -p winyx_core
 ```
 
 #### アプリケーションリストア
+- [ ] アプリケーションのリストア手順の確認
 ```bash
 # ファイルの復元
 cd /
@@ -694,16 +736,17 @@ systemctl restart nginx
 ### 3.8.1 CDN設定（Cloudflare）
 
 #### Cloudflare設定手順
-1. Cloudflareアカウントでドメインを追加
-2. DNSレコードをCloudflareに移行
-3. SSL/TLS設定を「Full (strict)」に設定
-4. キャッシュルールの設定：
+- [ ] Cloudflareアカウントでドメインを追加
+- [ ] DNSレコードをCloudflareに移行
+- [ ] SSL/TLS設定を「Full (strict)」に設定
+- [ ] キャッシュルールの設定：
    - 静的ファイル: Cache Everything
    - API: Bypass Cache
 
 ### 3.8.2 アプリケーション最適化
 
 #### Go-Zeroの最適化設定
+- [ ] Go-Zeroサービスの最適化設定
 ```yaml
 # test_api-api.yaml に追加
 MaxConns: 1000
@@ -712,6 +755,7 @@ CpuThreshold: 900  # CPU使用率90%でサーキットブレーカー発動
 ```
 
 #### データベースインデックス最適化
+- [ ] データベースインデックスの最適化
 ```sql
 -- パフォーマンス分析
 EXPLAIN SELECT * FROM users WHERE email = 'test@example.com';
@@ -728,6 +772,7 @@ CREATE INDEX idx_sessions_user_expires ON sessions(user_id, expires_at);
 ### 3.9.1 よくある問題と解決策
 
 #### メモリ不足
+- [ ] スワップファイルの作成（必要に応じて）
 ```bash
 # スワップファイルの作成
 sudo fallocate -l 2G /swapfile
@@ -740,6 +785,7 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ```
 
 #### ディスク容量不足
+- [ ] ディスク容量の確認とクリーンアップ手順の確認
 ```bash
 # 大きなファイルの検索
 du -ah / | sort -rh | head -20
@@ -750,6 +796,7 @@ sudo apt-get clean
 ```
 
 #### サービス起動失敗
+- [ ] トラブルシューティング手順の確認
 ```bash
 # ログ確認
 journalctl -u winyx-test-api -n 50
@@ -763,6 +810,7 @@ ps aux | grep winyx
 ### 3.9.2 緊急時の対応手順
 
 #### サービス完全停止時
+- [ ] 緊急時対応手順の確認
 ```bash
 # 1. 全サービス状態確認
 systemctl status winyx-test-api nginx mysql redis
