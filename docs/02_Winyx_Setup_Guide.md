@@ -4,11 +4,11 @@
 
 ---
 
-## 2.1 環境準備
+## 第1節 環境準備
 
 ### 2.1.1 ディレクトリ構造の作成
 
-- [ ] プロジェクトルートの作成
+- [x] プロジェクトルートの作成
 
 ```bash
 sudo mkdir -p /var/www/winyx/{contracts/{api,rpc},backend,frontend,scripts,docs}
@@ -20,10 +20,12 @@ sudo chmod -R 775 /var/www/winyx
 
 ### 2.1.2 環境変数ファイルの準備
 
-- [ ] .envファイルの作成
+- [x] .envファイルの作成
 
 ```bash
-cat > /var/www/winyx/.env <<'EOF'
+vim /var/www/winyx/.env
+```
+```
 # Winyx Project Environment Variables
 # Database Configuration
 DB_HOST=127.0.0.1
@@ -51,12 +53,11 @@ JWT_EXPIRE=86400
 # MySQL Root User (for database creation only)
 MYSQL_ROOT_USER=root
 MYSQL_ROOT_PASSWORD=Winyx$7377
-EOF
 ```
 
 > 目的：機密情報を一元管理
 
-- [ ] .env.exampleテンプレートの作成
+- [x] .env.exampleテンプレートの作成
 
 ```bash
 cp /var/www/winyx/.env /var/www/winyx/.env.example
@@ -67,7 +68,7 @@ sed -i 's/Winyx\$7377/YOUR_PASSWORD/g' /var/www/winyx/.env.example
 
 ### 2.1.3 Go環境のセットアップ
 
-- [ ] Go PATHとGOBINの設定
+- [x] Go PATHとGOBINの設定
 
 ```bash
 vim ~/.bashrc
@@ -83,7 +84,7 @@ source ~/.bashrc
 
 > 目的：goctl等のCLIツールへのPATH解決
 
-- [ ] Go-Zero関連ツールのインストール
+- [x] Go-Zero関連ツールのインストール
 
 ```bash
 # goctl（Go-Zero CLIツール）
@@ -98,14 +99,16 @@ go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 
 ---
 
-## 2.2 バックエンド構築
+### 2.1.4 バックエンド構築
 
-### 2.2.1 データベースセットアップ
+#### 2.1.4.1 データベースセットアップ
 
-- [ ] セットアップスクリプトの作成
+- [x] セットアップスクリプトの作成
 
 ```bash
-cat > /var/www/winyx/scripts/setup_database.sh <<'SCRIPT'
+vim  /var/www/winyx/scripts/setup_database.sh
+```
+```bash
 #!/bin/bash
 # Setup database using credentials from .env file
 
@@ -144,14 +147,15 @@ sudo mysql < /tmp/setup_winyx_db.sql
 # Clean up
 rm -f /tmp/setup_winyx_db.sql
 echo "Database setup complete."
-SCRIPT
-
+```
+- [ ] 実行権限を与えます
+```bash
 chmod +x /var/www/winyx/scripts/setup_database.sh
 ```
 
 > 目的：.envからDB設定を読み込んで自動構築
 
-- [ ] データベースの作成実行
+- [x] データベースの作成実行
 
 ```bash
 /var/www/winyx/scripts/setup_database.sh
@@ -159,9 +163,9 @@ chmod +x /var/www/winyx/scripts/setup_database.sh
 
 > 目的：winyx_coreデータベースとwinyx_appユーザーを作成
 
-### 2.2.2 Go-Zeroサービスの初期化
+#### 2.1.4.2 Go-Zeroサービスの初期化
 
-- [ ] backendディレクトリでGoモジュール初期化
+- [x] backendディレクトリでGoモジュール初期化
 
 ```bash
 cd /var/www/winyx/backend
@@ -171,7 +175,7 @@ go get github.com/zeromicro/go-zero@latest
 
 > 目的：Go依存関係の管理基盤を用意
 
-- [ ] test_apiサービスの生成
+- [x] test_apiサービスの生成
 
 ```bash
 cd /var/www/winyx/backend
@@ -180,12 +184,14 @@ goctl api new test_api
 
 > 目的：APIサービスの雛形を生成
 
-### 2.2.3 DDL → Model生成（キャッシュ対応）
+#### 2.1.4.3 DDL → Model生成（キャッシュ対応）
 
-- [ ] DDLファイルの作成
+- [x] DDLファイルの作成
 
 ```bash
-cat > /var/www/winyx/contracts/api/schema.sql <<'SQL'
+vim /var/www/winyx/contracts/api/schema.sql 
+```
+```
 -- Winyx Core Database Schema
 CREATE TABLE IF NOT EXISTS `users` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -234,16 +240,16 @@ CREATE TABLE IF NOT EXISTS `sessions` (
   KEY `idx_expires_at` (`expires_at`),
   CONSTRAINT `fk_sessions_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-SQL
 ```
 
 > 目的：データベーススキーマの定義
 
-- [ ] 外部キー制約なしバージョンの作成（goctl用）
+- [x] 外部キー制約なしバージョンの作成（goctl用）
 
 ```bash
-# goctlは外部キー制約をサポートしていないため、FKなしバージョンを作成
-cat > /var/www/winyx/contracts/api/schema_no_fk.sql <<'SQL'
+vim /var/www/winyx/contracts/api/schema_no_fk.sql
+```
+```
 -- Winyx Core Database Schema (Without Foreign Keys for goctl)
 CREATE TABLE IF NOT EXISTS `users` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -290,12 +296,11 @@ CREATE TABLE IF NOT EXISTS `sessions` (
   KEY `idx_token` (`token`(255)),
   KEY `idx_expires_at` (`expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-SQL
 ```
 
 > 目的：goctl model生成用のDDL準備
 
-- [ ] DDLをデータベースに適用
+- [x] DDLをデータベースに適用
 
 ```bash
 # .envから設定を読み込んで適用
@@ -305,7 +310,7 @@ mysql -h ${DB_HOST} -u ${DB_USERNAME} -p"${DB_PASSWORD}" -D ${DB_DATABASE} < /va
 
 > 目的：テーブルを実際に作成
 
-- [ ] Redisキャッシュ対応モデルの生成
+- [x] Redisキャッシュ対応モデルの生成
 
 ```bash
 cd /var/www/winyx/backend/test_api
@@ -317,11 +322,14 @@ goctl model mysql ddl \
 
 > 目的：CRUD操作とRedisキャッシュ対応のモデルコードを自動生成
 
-### 2.2.4 設定ファイルの環境変数対応
+#### 2.1.4.4 設定ファイルの環境変数対応
 
-- [ ] 設定読み込みスクリプトの作成
+- [x] 設定読み込みスクリプトの作成
 
 ```bash
+vim /var/www/winyx/backend/test_api/load_env.sh
+```
+```
 cat > /var/www/winyx/backend/test_api/load_env.sh <<'SCRIPT'
 #!/bin/bash
 # Load environment variables from .env file and create YAML config
@@ -330,7 +338,9 @@ cat > /var/www/winyx/backend/test_api/load_env.sh <<'SCRIPT'
 if [ -f "/var/www/winyx/.env" ]; then
     export $(grep -v '^#' /var/www/winyx/.env | xargs)
 fi
-
+```
+- [ ] 環境設定ファイル作成
+```
 # Create config file from environment variables
 cat > /var/www/winyx/backend/test_api/etc/test_api-api.yaml <<EOF
 Name: ${APP_NAME:-test_api}
@@ -348,11 +358,10 @@ Cache:
 Auth:
   AccessSecret: "${JWT_SECRET}"
   AccessExpire: ${JWT_EXPIRE:-86400}
-EOF
-
+```
+- [ ] 実行権限を与えます
+```
 echo "Configuration file created at etc/test_api-api.yaml"
-SCRIPT
-
 chmod +x /var/www/winyx/backend/test_api/load_env.sh
 ```
 
@@ -367,9 +376,9 @@ cd /var/www/winyx/backend/test_api
 
 > 目的：環境変数から実際の設定ファイルを作成
 
-### 2.2.5 サービスの起動確認
+#### 2.1.4.5 サービスの起動確認
 
-- [ ] test_apiのビルドと起動
+- [x] test_apiのビルドと起動
 
 ```bash
 cd /var/www/winyx/backend/test_api
@@ -381,7 +390,7 @@ echo $! > /tmp/test_api.pid
 
 > 目的：サービスのビルドと起動
 
-- [ ] 疎通確認
+- [x] 疎通確認
 
 ```bash
 curl -s http://127.0.0.1:8888/from/you | jq .
@@ -390,7 +399,7 @@ curl -s http://127.0.0.1:8888/from/you | jq .
 
 > 目的：APIエンドポイントの動作確認
 
-- [ ] サービス停止
+- [x] サービス停止
 
 ```bash
 kill "$(cat /tmp/test_api.pid)"
@@ -400,11 +409,11 @@ kill "$(cat /tmp/test_api.pid)"
 
 ---
 
-## 2.3 セキュリティとGit管理
+### 2.1.5 セキュリティとGit管理
 
-### 2.3.1 .gitignoreの設定
+#### 2.1.5.1 .gitignoreの設定
 
-- [ ] 機密情報の除外設定確認
+- [x] 機密情報の除外設定確認
 
 ```bash
 # .gitignoreに以下が含まれていることを確認
@@ -415,9 +424,9 @@ grep "!contracts/\*\*/\*.sql" /var/www/winyx/.gitignore
 
 > 目的：.envファイルがGitに含まれないことを保証
 
-### 2.3.2 ファイル権限の設定
+#### 2.1.5.2 ファイル権限の設定
 
-- [ ] .envファイルの権限設定
+- [x] .envファイルの権限設定
 
 ```bash
 chmod 600 /var/www/winyx/.env
@@ -427,9 +436,9 @@ chmod 600 /var/www/winyx/.env
 
 ---
 
-## 2.4 検証手順
+### 2.1.6 検証手順
 
-### 2.4.1 データベース接続テスト
+#### 2.1.6.1 データベース接続テスト
 
 ```bash
 source /var/www/winyx/.env
@@ -448,7 +457,7 @@ mysql -h ${DB_HOST} -u ${DB_USERNAME} -p"${DB_PASSWORD}" -D ${DB_DATABASE} \
 +----------------------+
 ```
 
-### 2.4.2 モデル生成の確認
+#### 2.1.6.2 モデル生成の確認
 
 ```bash
 ls -la /var/www/winyx/backend/test_api/internal/model/
@@ -462,18 +471,18 @@ ls -la /var/www/winyx/backend/test_api/internal/model/
 
 ---
 
-## 2.5 トラブルシューティング
+### 2.1.7 トラブルシューティング
 
-### 問題1：データベース接続エラー（MySQL/MariaDB認証問題）
+#### 問題1：データベース接続エラー（MySQL/MariaDB認証問題）
 
 **症状**: `ERROR 1045 (28000): Access denied`
 
 **原因**: MariaDBではMySQL 8.0+とは異なる認証方法を使用
 
 **解決策**:
+- [ ] MariaDB用の認証修正スクリプトを作成
+
 ```bash
-# MariaDB用の認証修正スクリプトを作成
-cat > /var/www/winyx/scripts/fix_mysql_auth.sh <<'SCRIPT'
 #!/bin/bash
 source /var/www/winyx/.env
 
@@ -486,13 +495,15 @@ EOF
 sudo mysql < /tmp/fix_auth.sql
 mysql -h ${DB_HOST} -u ${DB_USERNAME} -p"${DB_PASSWORD}" -D ${DB_DATABASE} < /var/www/winyx/contracts/api/schema.sql
 rm -f /tmp/fix_auth.sql
-SCRIPT
+```
+- [ ] 実行権限を与えます
 
+```
 chmod +x /var/www/winyx/scripts/fix_mysql_auth.sh
 /var/www/winyx/scripts/fix_mysql_auth.sh
 ```
 
-### 問題2：Go権限エラー
+#### 問題2：Go権限エラー
 
 **症状**: `could not create module cache: permission denied`
 
@@ -503,7 +514,7 @@ cd /var/www/winyx/backend/test_api
 GOPATH=/tmp/go GOCACHE=/tmp/go-cache go run testapi.go
 ```
 
-### 問題3：goctl model生成エラー
+#### 問題3：goctl model生成エラー
 
 外部キー制約エラーの場合：
 ```bash
@@ -513,7 +524,7 @@ goctl model mysql ddl \
   -dir ./internal/model -c
 ```
 
-### 問題4：環境変数が読み込まれない
+#### 問題4：環境変数が読み込まれない
 
 ```bash
 # .envファイルの存在確認
@@ -526,7 +537,7 @@ echo $DB_USERNAME
 
 ---
 
-## 2.6 注意点（落とし穴）
+### 2.1.8 注意点（落とし穴）
 
 1. **パスワードに特殊文字**：`$`などはエスケープが必要
 2. **設定ファイル名の統一**：`test_api-api.yaml`で統一（ハイフン位置に注意）
@@ -534,16 +545,16 @@ echo $DB_USERNAME
 
 ---
 
----
+## 第2節 systemdサービス化
 
-## 第3章：次のステップ（systemdサービス化）
+### 2.2.1 systemdサービスファイルの作成
 
-### 3.1 systemdサービスファイルの作成
-
-- [ ] サービスファイルの作成
+- [x] サービスファイルの作成
 
 ```bash
-sudo tee /etc/systemd/system/winyx-test-api.service <<'EOF'
+sudo vim  /etc/systemd/system/winyx-test-api.service
+```
+```
 [Unit]
 Description=Winyx Test API Service
 After=network.target mysql.service
@@ -567,14 +578,13 @@ SyslogIdentifier=winyx-test-api
 
 [Install]
 WantedBy=multi-user.target
-EOF
 ```
 
 > 目的：APIサーバーをシステムサービスとして管理
 
-### 3.2 権限とディレクトリ設定
+### 2.2.2 権限とディレクトリ設定
 
-- [ ] サービス用ディレクトリの準備
+- [x] サービス用ディレクトリの準備
 
 ```bash
 # www-dataユーザーがアクセスできるように設定
@@ -584,11 +594,21 @@ sudo mkdir -p /tmp/go
 sudo chown www-data:www-data /tmp/go
 ```
 
-> 目的：サービス実行環境の整備
+- [x] ログ表示権限の設定
 
-### 3.3 サービスの有効化と起動
+```bash
+# 現在のユーザーをsystemd-journalグループに追加（ログ表示権限）
+sudo usermod -a -G systemd-journal $USER
 
-- [ ] systemdサービスの管理
+# 新しいグループ権限を適用（新しいシェルセッション開始）
+newgrp systemd-journal
+```
+
+> 目的：サービス実行環境とログアクセス権限の整備
+
+### 2.2.3 サービスの有効化と起動
+
+- [x] systemdサービスの管理
 
 ```bash
 # サービスファイルの再読み込み
@@ -606,7 +626,7 @@ sudo systemctl status winyx-test-api
 
 > 目的：サービスとして常駐化
 
-### 3.4 サービス管理コマンド
+### 2.2.4 サービス管理コマンド
 
 ```bash
 # サービス開始
@@ -626,9 +646,9 @@ sudo systemctl enable winyx-test-api    # 有効化
 sudo systemctl disable winyx-test-api   # 無効化
 ```
 
-### 3.5 検証
+### 2.2.5 検証
 
-- [ ] サービス動作確認
+- [x] サービス動作確認
 
 ```bash
 # サービス状態確認
@@ -645,10 +665,421 @@ ps aux | grep testapi.go
 
 ---
 
-## 第4章予告：認証機能の実装
+## 第3節 認証機能の実装
 
-次章では以下を実装予定：
-1. JWTトークン認証
-2. ユーザー登録・ログインAPI
-3. ミドルウェアによる認証保護
-4. セッション管理機能
+### 2.3.1 JWT認証の概要
+
+本節では、go-zeroフレームワークを使用してJWT（JSON Web Token）ベースの認証システムを実装します。
+
+#### 実装する機能
+1. ユーザー登録API
+2. ログインAPI（JWT発行）
+3. JWT認証ミドルウェア
+4. 認証が必要なAPIエンドポイント
+5. セッション管理（Redis）
+
+### 2.3.2 APIルートの設計
+
+- [x] API定義ファイルの更新
+
+```bash
+vim /var/www/winyx/backend/test_api/test_api.api
+```
+```
+// User Authentication APIs
+type RegisterReq {
+    Name     string `json:"name"`
+    Email    string `json:"email"`
+    Password string `json:"password"`
+}
+
+type RegisterRes {
+    Id    int64  `json:"id"`
+    Name  string `json:"name"`
+    Email string `json:"email"`
+}
+
+type LoginReq {
+    Email    string `json:"email"`
+    Password string `json:"password"`
+}
+
+type LoginRes {
+    AccessToken string `json:"access_token"`
+    ExpireTime  int64  `json:"expire_time"`
+}
+
+type UserInfoRes {
+    Id    int64  `json:"id"`
+    Name  string `json:"name"`
+    Email string `json:"email"`
+}
+
+service test_api-api {
+    // Public endpoints (no auth required)
+    @handler register
+    post /api/register (RegisterReq) returns (RegisterRes)
+    
+    @handler login
+    post /api/login (LoginReq) returns (LoginRes)
+}
+
+@server(
+    jwt: Auth
+    group: protected
+    prefix: /api
+)
+service test_api-api {
+    // Protected endpoints (auth required)
+    @handler userInfo
+    get /user/info returns (UserInfoRes)
+    
+    @handler updateProfile
+    post /user/profile (RegisterReq) returns (RegisterRes)
+}
+```
+
+> 目的：認証付きAPIの定義
+
+### 2.3.3 コード生成とファイル構成
+
+- [x] 更新されたAPIからコードを再生成
+
+```bash
+cd /var/www/winyx/backend/test_api
+goctl api go -api test_api.api -dir . --style=goZero
+```
+
+> 目的：JWT認証対応のハンドラーとルートを自動生成
+
+### 2.3.4 認証ロジックの実装
+
+- [x] ユーザー登録ハンドラーの実装
+
+```bash
+vim /var/www/winyx/backend/test_api/internal/handler/registerhandler.go
+```
+```
+package handler
+
+import (
+	"net/http"
+
+	"github.com/winyx/backend/test_api/internal/logic"
+	"github.com/winyx/backend/test_api/internal/svc"
+	"github.com/winyx/backend/test_api/internal/types"
+	"github.com/zeromicro/go-zero/rest/httpx"
+)
+
+func registerHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.RegisterReq
+		if err := httpx.Parse(r, &req); err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+
+		l := logic.NewRegisterLogic(r.Context(), svcCtx)
+		resp, err := l.Register(&req)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+		} else {
+			httpx.OkJsonCtx(r.Context(), w, resp)
+		}
+	}
+}
+```
+
+- [x] ログインハンドラーの実装
+
+```bash
+vim /var/www/winyx/backend/test_api/internal/handler/loginhandler.go
+```
+```bash
+package handler
+
+import (
+	"net/http"
+
+	"github.com/winyx/backend/test_api/internal/logic"
+	"github.com/winyx/backend/test_api/internal/svc"
+	"github.com/winyx/backend/test_api/internal/types"
+	"github.com/zeromicro/go-zero/rest/httpx"
+)
+
+func loginHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req types.LoginReq
+		if err := httpx.Parse(r, &req); err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+			return
+		}
+
+		l := logic.NewLoginLogic(r.Context(), svcCtx)
+		resp, err := l.Login(&req)
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+		} else {
+			httpx.OkJsonCtx(r.Context(), w, resp)
+		}
+	}
+}
+```
+
+### 2.3.5 ビジネスロジックの実装
+
+- [x] ユーザー登録ロジックの実装
+
+```bash
+vim /var/www/winyx/backend/test_api/internal/logic/registerlogic.go
+```
+```
+package logic
+
+import (
+	"context"
+	"database/sql"
+	"time"
+
+	"github.com/winyx/backend/test_api/internal/model"
+	"github.com/winyx/backend/test_api/internal/svc"
+	"github.com/winyx/backend/test_api/internal/types"
+
+	"github.com/zeromicro/go-zero/core/logx"
+	"golang.org/x/crypto/bcrypt"
+)
+
+type RegisterLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewRegisterLogic(ctx context.Context, svcCtx *svc.ServiceContext) *RegisterLogic {
+	return &RegisterLogic{
+		Logger: logx.WithContext(ctx),
+		ctx:    ctx,
+		svcCtx: svcCtx,
+	}
+}
+
+func (l *RegisterLogic) Register(req *types.RegisterReq) (resp *types.RegisterRes, err error) {
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if user exists
+	_, err = l.svcCtx.UsersModel.FindOneByEmail(l.ctx, req.Email)
+	if err != sql.ErrNoRows {
+		if err == nil {
+			return nil, errors.New("user already exists")
+		}
+		return nil, err
+	}
+
+	// Create user
+	user := &model.Users{
+		Name:     req.Name,
+		Email:    req.Email,
+		Password: string(hashedPassword),
+		Status:   1,
+	}
+
+	result, err := l.svcCtx.UsersModel.Insert(l.ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
+	userId, err := result.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.RegisterRes{
+		Id:    userId,
+		Name:  req.Name,
+		Email: req.Email,
+	}, nil
+}
+```
+
+- [x] ログインロジックの実装
+
+```bash
+vim /var/www/winyx/backend/test_api/internal/logic/loginlogic.go
+```
+```
+package logic
+
+import (
+	"context"
+	"time"
+
+	"github.com/winyx/backend/test_api/internal/svc"
+	"github.com/winyx/backend/test_api/internal/types"
+
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/zeromicro/go-zero/core/logx"
+	"golang.org/x/crypto/bcrypt"
+)
+
+type LoginLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewLoginLogic(ctx context.Context, svcCtx *svc.ServiceContext) *LoginLogic {
+	return &LoginLogic{
+		Logger: logx.WithContext(ctx),
+		ctx:    ctx,
+		svcCtx: svcCtx,
+	}
+}
+
+func (l *LoginLogic) Login(req *types.LoginReq) (resp *types.LoginRes, err error) {
+	// Find user by email
+	user, err := l.svcCtx.UsersModel.FindOneByEmail(l.ctx, req.Email)
+	if err != nil {
+		return nil, errors.New("invalid credentials")
+	}
+
+	// Check password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		return nil, errors.New("invalid credentials")
+	}
+
+	// Generate JWT token
+	now := time.Now().Unix()
+	expire := l.svcCtx.Config.Auth.AccessExpire
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"iat":    now,
+		"exp":    now + expire,
+		"userId": user.Id,
+	})
+
+	accessToken, err := token.SignedString([]byte(l.svcCtx.Config.Auth.AccessSecret))
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.LoginRes{
+		AccessToken: accessToken,
+		ExpireTime:  now + expire,
+	}, nil
+}
+```
+
+### 2.3.6 保護されたエンドポイントの実装
+
+- [x] ユーザー情報取得ハンドラー
+
+```bash
+vim /var/www/winyx/backend/test_api/internal/handler/protected/userinfohandler.go
+```
+```
+package protected
+
+import (
+	"net/http"
+
+	"github.com/winyx/backend/test_api/internal/logic/protected"
+	"github.com/winyx/backend/test_api/internal/svc"
+	"github.com/zeromicro/go-zero/rest/httpx"
+)
+
+func UserInfoHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		l := protected.NewUserInfoLogic(r.Context(), svcCtx)
+		resp, err := l.UserInfo()
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+		} else {
+			httpx.OkJsonCtx(r.Context(), w, resp)
+		}
+	}
+}
+```
+
+### 2.3.7 依存関係の追加
+
+- [x] 必要なパッケージをgo.modに追加
+
+```bash
+cd /var/www/winyx/backend/test_api
+go get golang.org/x/crypto/bcrypt
+go get github.com/golang-jwt/jwt/v4
+go mod tidy
+```
+
+### 2.3.8 設定ファイルの更新
+
+- [x] JWT設定がload_env.shで正しく設定されていることを確認
+
+```bash
+# 既存のload_env.shを確認
+grep -A5 "Auth:" /var/www/winyx/backend/test_api/load_env.sh
+```
+
+### 2.3.9 テスト手順
+
+- [x] 認証APIのテスト
+
+```bash
+# サービス再起動
+sudo systemctl restart winyx-test-api
+
+# 1. ユーザー登録
+curl -X POST http://127.0.0.1:8888/api/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Test User",
+    "email": "test@example.com",
+    "password": "password123"
+  }' | jq .
+
+# 2. ログイン（JWTトークン取得）
+curl -X POST http://127.0.0.1:8888/api/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "password": "password123"
+  }' | jq .
+
+# 3. 保護されたエンドポイントにアクセス（Bearerトークン必要）
+curl -X GET http://127.0.0.1:8888/api/user/info \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN_HERE" | jq .
+```
+
+### 2.3.10 トラブルシューティング
+
+#### 問題1：JWT関連エラー
+```bash
+# JWT秘密鍵の確認
+grep JWT_SECRET /var/www/winyx/.env
+
+# 設定ファイルでの反映確認
+grep AccessSecret /var/www/winyx/backend/test_api/etc/test_api-api.yaml
+```
+
+#### 問題2：データベース接続エラー
+```bash
+# データベース接続確認
+source /var/www/winyx/.env
+mysql -h ${DB_HOST} -u ${DB_USERNAME} -p"${DB_PASSWORD}" -D ${DB_DATABASE} -e "SELECT * FROM users LIMIT 1;"
+```
+
+---
+
+## まとめ
+
+第3節で実装した認証機能により、以下が可能になりました：
+
+1. **セキュアなユーザー管理**: bcryptによるパスワードハッシュ化
+2. **JWT認証**: ステートレスな認証システム
+3. **保護されたAPI**: 認証が必要なエンドポイントの実装
+4. **RESTful設計**: 標準的なHTTP APIの提供
+
+次のステップでは、これらの認証機能を拡張して、ユーザープロフィール管理やロールベースアクセス制御（RBAC）の実装を検討できます。
