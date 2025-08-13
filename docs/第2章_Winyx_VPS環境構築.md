@@ -1,6 +1,6 @@
-# 第2章 Winyx 環境構築・セットアップ編（改訂版）
+# 第2章 Winyx VPS環境構築
 
-> 本章は環境変数（.env）による設定管理とDDLからのモデル生成を含む最新の実装手順です。
+> 本章は第1章の仕様に基づき、環境変数（.env）による設定管理とDDLからのモデル生成を含む具体的な実装手順です。
 
 ---
 
@@ -16,7 +16,7 @@ sudo chown -R "$USER":www-data /var/www/winyx
 sudo chmod -R 775 /var/www/winyx
 ```
 
-> 目的：Winyx標準のディレクトリ構造を用意
+> 目的：第1章で定義したWinyx標準のディレクトリ構造を作成
 
 ### 2.1.2 環境変数ファイルの準備
 
@@ -186,7 +186,7 @@ goctl api new test_api
 
 #### 2.1.4.3 DDL → Model生成（キャッシュ対応）
 
-- [x] DDLファイルの作成
+- [x] DDLファイルの作成（第1章の契約管理方針に従い、contracts/apiに配置）
 
 ```bash
 vim /var/www/winyx/contracts/api/schema.sql 

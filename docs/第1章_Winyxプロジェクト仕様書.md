@@ -25,10 +25,14 @@ Winyxプロジェクトは、バックエンドをVPS上で稼働させ、フロ
 ```
 /var/www/winyx/
   contracts/
-    api/    # .api（REST契約定義）
+    api/    # .api（REST契約定義）とDDLスキーマ
     rpc/    # .proto（gRPC契約定義）
   backend/  # Go-Zeroによるサービス実装
   frontend/ # ビルド済み静的ファイル（Next.js出力）
+  scripts/  # セットアップスクリプトや管理用ツール
+  docs/     # プロジェクトドキュメント
+  .env      # 環境変数設定ファイル（Git管理外）
+  .env.example # 環境変数テンプレート
 ```
 
 ---
@@ -40,6 +44,8 @@ Winyxプロジェクトは、バックエンドをVPS上で稼働させ、フロ
 * 契約は `/contracts` ディレクトリに集約し、バージョン管理。
 * RESTは `.api` → `goctl api plugin` でOpenAPIに変換。
 * RPCは `.proto` → `buf`でlintおよび後方互換性チェック。
+* DDLスキーマも `/contracts/api` で管理し、モデル生成の基盤とする。
+* 環境変数は `.env` ファイルで一元管理（パスワード、JWT秘密鍵等）。
 * CIで以下を生成し配布：
 
   * TypeScript型定義ファイル
@@ -127,5 +133,7 @@ service UserService {
 ## 第3節 まとめ
 
 * 契約駆動開発（Contract-First）により、フロントとバックエンドの同期を保証。
-* VPS上では `/var/www/winyx` に contracts/backend/frontend を配置し、役割を明確化。
+* VPS上では `/var/www/winyx` に contracts/backend/frontend/scripts/docs を配置し、役割を明確化。
 * RESTとRPCの両対応を可能にし、外部公開APIはREST、内部高速通信はRPCを推奨。
+* 環境変数による設定管理で、機密情報の安全な管理を実現。
+* DDLからのモデル自動生成により、データベース操作の型安全性を確保。
