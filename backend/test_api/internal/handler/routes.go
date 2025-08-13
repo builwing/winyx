@@ -6,6 +6,7 @@ package handler
 import (
 	"net/http"
 
+	protected "github.com/winyx/backend/test_api/internal/handler/protected"
 	"github.com/winyx/backend/test_api/internal/svc"
 
 	"github.com/zeromicro/go-zero/rest"
@@ -15,10 +16,32 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
-				Method:  http.MethodGet,
-				Path:    "/from/:name",
-				Handler: Test_apiHandler(serverCtx),
+				Method:  http.MethodPost,
+				Path:    "/api/login",
+				Handler: loginHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/api/register",
+				Handler: registerHandler(serverCtx),
 			},
 		},
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				Method:  http.MethodGet,
+				Path:    "/user/info",
+				Handler: protected.UserInfoHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/user/profile",
+				Handler: protected.UpdateProfileHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api"),
 	)
 }

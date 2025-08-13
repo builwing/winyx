@@ -1,15 +1,52 @@
-syntax = "v1"
-
-type Request {
-	Name string `path:"name,options=you|me"`
+// User Authentication APIs
+type RegisterReq {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
-type Response {
-	Message string `json:"message"`
+type RegisterRes {
+	Id    int64  `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
+type LoginReq {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type LoginRes {
+	AccessToken string `json:"access_token"`
+	ExpireTime  int64  `json:"expire_time"`
+}
+
+type UserInfoRes {
+	Id    int64  `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }
 
 service test_api-api {
-	@handler Test_apiHandler
-	get /from/:name (Request) returns (Response)
+	// Public endpoints (no auth required)
+	@handler register
+	post /api/register (RegisterReq) returns (RegisterRes)
+
+	@handler login
+	post /api/login (LoginReq) returns (LoginRes)
+}
+
+@server (
+	jwt:    Auth
+	group:  protected
+	prefix: /api
+)
+service test_api-api {
+	// Protected endpoints (auth required)
+	@handler userInfo
+	get /user/info returns (UserInfoRes)
+
+	@handler updateProfile
+	post /user/profile (RegisterReq) returns (RegisterRes)
 }
 

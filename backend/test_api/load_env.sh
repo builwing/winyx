@@ -25,4 +25,4 @@ Auth:
   AccessExpire: ${JWT_EXPIRE:-86400}
 EOF
 
-echo "Configuration file created at /var/www/winyx/backend/test_api/etc/test_api-api.yaml"
+echo "Configuration file created at etc/test_api-api.yaml"

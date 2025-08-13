@@ -3,10 +3,30 @@
 
 package types
 
-type Request struct {
-	Name string `path:"name,options=you|me"`
+type LoginReq struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
-type Response struct {
-	Message string `json:"message"`
+type LoginRes struct {
+	AccessToken string `json:"access_token"`
+	ExpireTime  int64  `json:"expire_time"`
+}
+
+type RegisterReq struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type RegisterRes struct {
+	Id    int64  `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
+type UserInfoRes struct {
+	Id    int64  `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }
