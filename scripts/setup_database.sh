@@ -5,7 +5,7 @@
 if [ -f "/var/www/winyx/.env" ]; then
     source /var/www/winyx/.env
 else
-    echo "Error: .env file not found at /var/www/winyx/.env"
+    echo "Error: .env file not found"
     exit 1
 fi
 
@@ -13,61 +13,26 @@ echo "Creating database and user..."
 
 # Create SQL commands
 cat > /tmp/setup_winyx_db.sql <<EOF
-CREATE DATABASE IF NOT EXISTS ${DB_DATABASE} DEFAULT CHARACTER SET ${DB_CHARSET} DEFAULT COLLATE ${DB_CHARSET}_unicode_ci;
-CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'localhost' IDENTIFIED BY '${DB_PASSWORD}';
-GRANT ALL PRIVILEGES ON ${DB_DATABASE}.* TO '${DB_USERNAME}'@'localhost';
-CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'${DB_HOST}' IDENTIFIED BY '${DB_PASSWORD}';
-GRANT ALL PRIVILEGES ON ${DB_DATABASE}.* TO '${DB_USERNAME}'@'${DB_HOST}';
+CREATE DATABASE IF NOT EXISTS ${DB_DATABASE} 
+  DEFAULT CHARACTER SET ${DB_CHARSET} 
+  DEFAULT COLLATE ${DB_CHARSET}_unicode_ci;
+  
+CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'localhost' 
+  IDENTIFIED BY '${DB_PASSWORD}';
+GRANT ALL PRIVILEGES ON ${DB_DATABASE}.* 
+  TO '${DB_USERNAME}'@'localhost';
+  
+CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'${DB_HOST}' 
+  IDENTIFIED BY '${DB_PASSWORD}';
+GRANT ALL PRIVILEGES ON ${DB_DATABASE}.* 
+  TO '${DB_USERNAME}'@'${DB_HOST}';
+  
 FLUSH PRIVILEGES;
 EOF
 
-# Try sudo first (for systems with auth_socket authentication)
-echo "Attempting database creation with sudo..."
-sudo mysql < /tmp/setup_winyx_db.sql 2>/dev/null
-if [ $? -eq 0 ]; then
-    echo "Database and user created successfully."
-    
-    # Apply DDL
-    echo "Applying DDL schema..."
-    mysql -h ${DB_HOST} -u ${DB_USERNAME} -p"${DB_PASSWORD}" -D ${DB_DATABASE} < /var/www/winyx/contracts/api/schema.sql
-    if [ $? -eq 0 ]; then
-        echo "DDL applied successfully."
-        
-        # Show created tables
-        echo "Created tables:"
-        mysql -h ${DB_HOST} -u ${DB_USERNAME} -p"${DB_PASSWORD}" -D ${DB_DATABASE} -e "SHOW TABLES;"
-    else
-        echo "Error: Failed to apply DDL."
-    fi
-else
-    # Fall back to password authentication
-    if [ -n "${MYSQL_ROOT_PASSWORD}" ]; then
-        echo "Sudo failed, attempting with password authentication..."
-        mysql -u ${MYSQL_ROOT_USER} -p"${MYSQL_ROOT_PASSWORD}" < /tmp/setup_winyx_db.sql
-        if [ $? -eq 0 ]; then
-            echo "Database and user created successfully."
-            
-            # Apply DDL
-            echo "Applying DDL schema..."
-            mysql -h ${DB_HOST} -u ${DB_USERNAME} -p"${DB_PASSWORD}" -D ${DB_DATABASE} < /var/www/winyx/contracts/api/schema.sql
-            if [ $? -eq 0 ]; then
-                echo "DDL applied successfully."
-                
-                # Show created tables
-                echo "Created tables:"
-                mysql -h ${DB_HOST} -u ${DB_USERNAME} -p"${DB_PASSWORD}" -D ${DB_DATABASE} -e "SHOW TABLES;"
-            else
-                echo "Error: Failed to apply DDL."
-            fi
-        else
-            echo "Error: Failed to create database. Please check root credentials."
-        fi
-    else
-        echo "Error: Failed to create database. Please run with sudo or set MYSQL_ROOT_PASSWORD in .env"
-    fi
-fi
+# Execute with sudo
+sudo mysql < /tmp/setup_winyx_db.sql
 
 # Clean up
 rm -f /tmp/setup_winyx_db.sql
-
 echo "Database setup complete."
