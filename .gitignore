@@ -1,0 +1,114 @@
+# ===============================
+# Winyx Monorepo .gitignore (root)
+# Covers: Laravel 12, Next.js 15, Go-Zero services
+# ===============================
+
+########################
+# 1) OS / Editor junk  #
+########################
+# macOS / Windows
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+# Vim / Emacs / JetBrains / VSCode
+*~
+*.swp
+*.swo
+*.swn
+Session.vim
+.netrwhist
+.idea/
+.vscode/
+*.code-workspace
+
+##############
+# 2) General #
+##############
+*.log
+logs/
+*.tmp
+tmp/
+*.pid
+*.bak
+*.orig
+*.out
+*.seed
+
+#############################
+# 3) Environment & Secrets  #
+#############################
+# Any .env except .env.example variants
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.example.*
+
+###########################
+# 4) Node / Next.js (15)  #
+###########################
+**/node_modules/
+**/.npm/
+**/.pnpm-store/
+**/.yarn/
+# Lock files are meant to be committed
+# (package-lock.json / pnpm-lock.yaml / yarn.lock) — DO NOT ignore
+# Next.js build artifacts
+**/.next/
+**/.next-turbo/
+**/.next/cache/
+**/.next/types/
+**/out/
+# Common JS/TS build outputs
+**/dist/
+**/build/
+**/coverage/
+# Source maps (optional): un-comment to ignore maps
+# **/*.map
+# TS incremental
+**/*.tsbuildinfo
+
+#############################
+# 5) PHP / Laravel (v12)   #
+#############################
+# Dependencies
+**/vendor/
+# Composer PHAR
+**/composer.phar
+# Storage / cache
+**/storage/*.key
+**/storage/logs/**
+**/storage/framework/**
+**/bootstrap/cache/**
+# Laravel Octane / Swoole runtime
+**/storage/app/*.tmp
+**/storage/app/public/*.tmp
+# Lock file SHOULD be committed for application
+# composer.lock — keep tracked (not ignored)
+
+###########################
+# 6) Go / Go-Zero         #
+###########################
+# Binaries and test outputs
+**/*.exe
+**/*.test
+**/*.out
+**/bin/
+**/build/
+# go.work can be committed in monorepos. If you prefer to ignore, un-comment next line:
+# go.work
+# go.sum SHOULD be committed
+
+##############################
+# 7) Databases / Dumps       #
+##############################
+*.sql
+*.sql.gz
+dump.rdb
+
+##############################
+# 8) Docker (if present)     #
+##############################
+docker-compose.override.yml
+**/.docker/
+*.env.docker
