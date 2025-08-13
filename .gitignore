@@ -102,7 +102,9 @@ tmp/
 ##############################
 # 7) Databases / Dumps       #
 ##############################
+# Exclude SQL dumps but keep contract DDLs
 *.sql
+!contracts/**/*.sql
 *.sql.gz
 dump.rdb
 
