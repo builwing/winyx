@@ -21,47 +21,49 @@ GRANT ALL PRIVILEGES ON ${DB_DATABASE}.* TO '${DB_USERNAME}'@'${DB_HOST}';
 FLUSH PRIVILEGES;
 EOF
 
-# Execute with root credentials
-if [ -n "${MYSQL_ROOT_PASSWORD}" ]; then
-    mysql -u ${MYSQL_ROOT_USER} -p"${MYSQL_ROOT_PASSWORD}" < /tmp/setup_winyx_db.sql
+# Try sudo first (for systems with auth_socket authentication)
+echo "Attempting database creation with sudo..."
+sudo mysql < /tmp/setup_winyx_db.sql 2>/dev/null
+if [ $? -eq 0 ]; then
+    echo "Database and user created successfully."
+    
+    # Apply DDL
+    echo "Applying DDL schema..."
+    mysql -h ${DB_HOST} -u ${DB_USERNAME} -p"${DB_PASSWORD}" -D ${DB_DATABASE} < /var/www/winyx/contracts/api/schema.sql
     if [ $? -eq 0 ]; then
-        echo "Database and user created successfully."
+        echo "DDL applied successfully."
         
-        # Apply DDL
-        echo "Applying DDL schema..."
-        mysql -h ${DB_HOST} -u ${DB_USERNAME} -p"${DB_PASSWORD}" -D ${DB_DATABASE} < /var/www/winyx/contracts/api/schema.sql
-        if [ $? -eq 0 ]; then
-            echo "DDL applied successfully."
-            
-            # Show created tables
-            echo "Created tables:"
-            mysql -h ${DB_HOST} -u ${DB_USERNAME} -p"${DB_PASSWORD}" -D ${DB_DATABASE} -e "SHOW TABLES;"
-        else
-            echo "Error: Failed to apply DDL."
-        fi
+        # Show created tables
+        echo "Created tables:"
+        mysql -h ${DB_HOST} -u ${DB_USERNAME} -p"${DB_PASSWORD}" -D ${DB_DATABASE} -e "SHOW TABLES;"
     else
-        echo "Error: Failed to create database. Please check root credentials."
+        echo "Error: Failed to apply DDL."
     fi
 else
-    echo "Using sudo for database creation..."
-    sudo mysql < /tmp/setup_winyx_db.sql
-    if [ $? -eq 0 ]; then
-        echo "Database and user created successfully."
-        
-        # Apply DDL
-        echo "Applying DDL schema..."
-        mysql -h ${DB_HOST} -u ${DB_USERNAME} -p"${DB_PASSWORD}" -D ${DB_DATABASE} < /var/www/winyx/contracts/api/schema.sql
+    # Fall back to password authentication
+    if [ -n "${MYSQL_ROOT_PASSWORD}" ]; then
+        echo "Sudo failed, attempting with password authentication..."
+        mysql -u ${MYSQL_ROOT_USER} -p"${MYSQL_ROOT_PASSWORD}" < /tmp/setup_winyx_db.sql
         if [ $? -eq 0 ]; then
-            echo "DDL applied successfully."
+            echo "Database and user created successfully."
             
-            # Show created tables
-            echo "Created tables:"
-            mysql -h ${DB_HOST} -u ${DB_USERNAME} -p"${DB_PASSWORD}" -D ${DB_DATABASE} -e "SHOW TABLES;"
+            # Apply DDL
+            echo "Applying DDL schema..."
+            mysql -h ${DB_HOST} -u ${DB_USERNAME} -p"${DB_PASSWORD}" -D ${DB_DATABASE} < /var/www/winyx/contracts/api/schema.sql
+            if [ $? -eq 0 ]; then
+                echo "DDL applied successfully."
+                
+                # Show created tables
+                echo "Created tables:"
+                mysql -h ${DB_HOST} -u ${DB_USERNAME} -p"${DB_PASSWORD}" -D ${DB_DATABASE} -e "SHOW TABLES;"
+            else
+                echo "Error: Failed to apply DDL."
+            fi
         else
-            echo "Error: Failed to apply DDL."
+            echo "Error: Failed to create database. Please check root credentials."
         fi
     else
-        echo "Error: Failed to create database."
+        echo "Error: Failed to create database. Please run with sudo or set MYSQL_ROOT_PASSWORD in .env"
     fi
 fi
 
