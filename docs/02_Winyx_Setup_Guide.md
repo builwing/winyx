@@ -464,18 +464,46 @@ ls -la /var/www/winyx/backend/test_api/internal/model/
 
 ## 2.5 トラブルシューティング
 
-### 問題1：データベース接続エラー
+### 問題1：データベース接続エラー（MySQL/MariaDB認証問題）
 
+**症状**: `ERROR 1045 (28000): Access denied`
+
+**原因**: MariaDBではMySQL 8.0+とは異なる認証方法を使用
+
+**解決策**:
 ```bash
-# .envの設定確認
-cat /var/www/winyx/.env | grep DB_
-
-# 接続テスト
+# MariaDB用の認証修正スクリプトを作成
+cat > /var/www/winyx/scripts/fix_mysql_auth.sh <<'SCRIPT'
+#!/bin/bash
 source /var/www/winyx/.env
-mysql -h ${DB_HOST} -u ${DB_USERNAME} -p"${DB_PASSWORD}" -e "SELECT 1;"
+
+cat > /tmp/fix_auth.sql <<EOF
+SET PASSWORD FOR '${DB_USERNAME}'@'localhost' = PASSWORD('${DB_PASSWORD}');
+SET PASSWORD FOR '${DB_USERNAME}'@'${DB_HOST}' = PASSWORD('${DB_PASSWORD}');
+FLUSH PRIVILEGES;
+EOF
+
+sudo mysql < /tmp/fix_auth.sql
+mysql -h ${DB_HOST} -u ${DB_USERNAME} -p"${DB_PASSWORD}" -D ${DB_DATABASE} < /var/www/winyx/contracts/api/schema.sql
+rm -f /tmp/fix_auth.sql
+SCRIPT
+
+chmod +x /var/www/winyx/scripts/fix_mysql_auth.sh
+/var/www/winyx/scripts/fix_mysql_auth.sh
 ```
 
-### 問題2：goctl model生成エラー
+### 問題2：Go権限エラー
+
+**症状**: `could not create module cache: permission denied`
+
+**解決策**:
+```bash
+# 一時的なGOPATHとキャッシュを使用
+cd /var/www/winyx/backend/test_api
+GOPATH=/tmp/go GOCACHE=/tmp/go-cache go run testapi.go
+```
+
+### 問題3：goctl model生成エラー
 
 外部キー制約エラーの場合：
 ```bash
@@ -485,7 +513,7 @@ goctl model mysql ddl \
   -dir ./internal/model -c
 ```
 
-### 問題3：環境変数が読み込まれない
+### 問題4：環境変数が読み込まれない
 
 ```bash
 # .envファイルの存在確認
@@ -506,6 +534,121 @@ echo $DB_USERNAME
 
 ---
 
-## 次の一歩
+---
 
-systemdユニットファイルを作成して、`EnvironmentFile=/var/www/winyx/.env`を設定し、サービスとして常駐化しましょう。
+## 第3章：次のステップ（systemdサービス化）
+
+### 3.1 systemdサービスファイルの作成
+
+- [ ] サービスファイルの作成
+
+```bash
+sudo tee /etc/systemd/system/winyx-test-api.service <<'EOF'
+[Unit]
+Description=Winyx Test API Service
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/winyx/backend/test_api
+Environment=GOPATH=/tmp/go
+Environment=GOCACHE=/tmp/go-cache
+EnvironmentFile=/var/www/winyx/.env
+ExecStartPre=/bin/bash -c '/var/www/winyx/backend/test_api/load_env.sh'
+ExecStart=/usr/local/go/bin/go run testapi.go
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=winyx-test-api
+
+[Install]
+WantedBy=multi-user.target
+EOF
+```
+
+> 目的：APIサーバーをシステムサービスとして管理
+
+### 3.2 権限とディレクトリ設定
+
+- [ ] サービス用ディレクトリの準備
+
+```bash
+# www-dataユーザーがアクセスできるように設定
+sudo chown -R www-data:www-data /var/www/winyx
+sudo chmod 755 /var/www/winyx/.env
+sudo mkdir -p /tmp/go
+sudo chown www-data:www-data /tmp/go
+```
+
+> 目的：サービス実行環境の整備
+
+### 3.3 サービスの有効化と起動
+
+- [ ] systemdサービスの管理
+
+```bash
+# サービスファイルの再読み込み
+sudo systemctl daemon-reload
+
+# サービスの有効化（起動時自動開始）
+sudo systemctl enable winyx-test-api
+
+# サービス開始
+sudo systemctl start winyx-test-api
+
+# ステータス確認
+sudo systemctl status winyx-test-api
+```
+
+> 目的：サービスとして常駐化
+
+### 3.4 サービス管理コマンド
+
+```bash
+# サービス開始
+sudo systemctl start winyx-test-api
+
+# サービス停止
+sudo systemctl stop winyx-test-api
+
+# サービス再起動
+sudo systemctl restart winyx-test-api
+
+# ログ確認
+journalctl -u winyx-test-api -f
+
+# 自動起動の有効化/無効化
+sudo systemctl enable winyx-test-api    # 有効化
+sudo systemctl disable winyx-test-api   # 無効化
+```
+
+### 3.5 検証
+
+- [ ] サービス動作確認
+
+```bash
+# サービス状態確認
+sudo systemctl is-active winyx-test-api
+# 期待値: active
+
+# API疎通確認
+curl -s http://127.0.0.1:8888/from/you | jq .
+# 期待値: null または適切なJSONレスポンス
+
+# プロセス確認
+ps aux | grep testapi.go
+```
+
+---
+
+## 第4章予告：認証機能の実装
+
+次章では以下を実装予定：
+1. JWTトークン認証
+2. ユーザー登録・ログインAPI
+3. ミドルウェアによる認証保護
+4. セッション管理機能
