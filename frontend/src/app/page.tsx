@@ -29,6 +29,7 @@ export default function Home() {
             <a href="#features" className="hover:text-purple-400 transition-colors">機能</a>
             <a href="#about" className="hover:text-purple-400 transition-colors">概要</a>
             <a href="/dashboard" className="hover:text-purple-400 transition-colors">ダッシュボード</a>
+            <a href="/users" className="hover:text-purple-400 transition-colors">ユーザー管理</a>
           </div>
         </div>
       </nav>
@@ -65,6 +66,12 @@ export default function Home() {
               <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
             </a>
             <a 
+              href="/users" 
+              className="px-8 py-4 border-2 border-purple-600 rounded-xl text-purple-300 font-semibold text-lg hover:border-purple-400 hover:text-purple-400 hover:bg-purple-600/10 transition-all duration-300 backdrop-blur-sm"
+            >
+              ユーザー管理
+            </a>
+            <a 
               href="/test" 
               className="px-8 py-4 border-2 border-gray-600 rounded-xl text-gray-300 font-semibold text-lg hover:border-purple-400 hover:text-purple-400 transition-all duration-300 backdrop-blur-sm"
             >
@@ -96,7 +103,7 @@ export default function Home() {
           <h2 className="text-4xl font-bold text-center text-white mb-16">
             主な機能
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="p-8 bg-white/5 rounded-2xl backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all duration-300">
               <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center mb-4">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,13 +123,22 @@ export default function Home() {
               <p className="text-gray-300">Go-ZeroとNext.js 15による高速なAPI応答とUI描画</p>
             </div>
             <div className="p-8 bg-white/5 rounded-2xl backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all duration-300">
+              <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center mb-4">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-3">ユーザー管理</h3>
+              <p className="text-gray-300">JWT認証による安全なユーザー登録・ログイン・権限管理</p>
+            </div>
+            <div className="p-8 bg-white/5 rounded-2xl backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all duration-300">
               <div className="w-12 h-12 bg-indigo-500 rounded-lg flex items-center justify-center mb-4">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </div>
               <h3 className="text-xl font-semibold text-white mb-3">セキュアな設計</h3>
-              <p className="text-gray-300">JWT認証と型安全なAPI通信による堅牢なセキュリティ</p>
+              <p className="text-gray-300">マイクロサービス間のHMAC認証と型安全なAPI通信</p>
             </div>
           </div>
         </div>
