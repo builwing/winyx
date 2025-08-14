@@ -1,0 +1,25 @@
+[Unit]
+Description=Winyx UserService
+After=network.target mysql.service redis.service
+Requires=mysql.service redis.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/winyx/backend/user_service
+ExecStart=/var/www/winyx/backend/user_service/user_service -f /var/www/winyx/backend/user_service/etc/user_service-api.yaml
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=winyx-user-service
+
+# Environment
+Environment=TZ=Asia/Tokyo
+
+# Resource Limits
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
