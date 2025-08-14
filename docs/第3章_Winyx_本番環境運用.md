@@ -9,7 +9,7 @@
 ### 3.1.1 Nginxのインストールと基本設定
 
 #### インストール
-- [ ] Nginxのインストール
+- [x] Nginxのインストール
 ```bash
 sudo apt update
 sudo apt install nginx -y
@@ -17,21 +17,24 @@ sudo systemctl enable nginx
 ```
 
 #### 基本設定ファイルの作成
-- [ ] Nginx設定ファイルの作成
+- [x] Nginx設定ファイルの作成
 ```bash
 sudo vim /etc/nginx/sites-available/winyx
 ```
 
 ```nginx
 # Winyx Nginx Configuration
+
+# バックエンドAPIのアップストリーム定義
 upstream backend_api {
     server 127.0.0.1:8888;
     keepalive 32;
 }
 
+# フロントエンド用サーバー設定 (winyx.jp)
 server {
     listen 80;
-    server_name your-domain.com;
+    server_name winyx.jp www.winyx.jp;
     
     # フロントエンド静的ファイル
     root /var/www/winyx/frontend;
@@ -49,8 +52,33 @@ server {
         add_header Cache-Control "public, immutable";
     }
     
-    # APIリバースプロキシ
-    location /api/ {
+    # APIドキュメント（Swagger UI）
+    location /docs/ {
+        alias /var/www/winyx/docs/swagger-ui/;
+        try_files $uri $uri/ /index.html;
+    }
+    
+    # Swagger JSON仕様書
+    location /docs/swagger.json {
+        alias /var/www/winyx/docs/swagger.json;
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range' always;
+    }
+    
+    # SPAのフォールバック
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+# API用サーバー設定 (api.winyx.jp)
+server {
+    listen 80;
+    server_name api.winyx.jp;
+    
+    # APIリバースプロキシ（バックエンドへ転送）
+    location / {
         proxy_pass http://backend_api;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -60,21 +88,30 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         
+        # CORS設定（必要に応じて）
+        add_header 'Access-Control-Allow-Origin' 'https://winyx.jp' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
+        add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
+        
+        # OPTIONSメソッドへの対応
+        if ($request_method = 'OPTIONS') {
+            add_header 'Access-Control-Max-Age' 1728000;
+            add_header 'Content-Type' 'text/plain; charset=utf-8';
+            add_header 'Content-Length' 0;
+            return 204;
+        }
+        
         # タイムアウト設定
         proxy_connect_timeout 60s;
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
     }
-    
-    # SPAのフォールバック
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
 }
 ```
 
 #### 設定の有効化
-- [ ] Nginx設定の有効化
+- [x] Nginx設定の有効化
 ```bash
 sudo ln -s /etc/nginx/sites-available/winyx /etc/nginx/sites-enabled/
 sudo nginx -t
@@ -84,7 +121,7 @@ sudo systemctl restart nginx
 ### 3.1.2 SSL/TLS証明書の設定（Let's Encrypt）
 
 #### Certbotのインストール
-- [ ] Certbotのインストール
+- [x] Certbotのインストール
 ```bash
 sudo apt install certbot python3-certbot-nginx -y
 ```
@@ -92,8 +129,9 @@ sudo apt install certbot python3-certbot-nginx -y
 #### SSL証明書の取得
 - [ ] SSL証明書の取得
 ```bash
-sudo certbot --nginx -d your-domain.com -d www.your-domain.com \
-  --non-interactive --agree-tos -m admin@your-domain.com
+# フロントエンドとAPIの両ドメインでSSL証明書を取得
+sudo certbot --nginx -d winyx.jp -d www.winyx.jp -d api.winyx.jp \
+  --non-interactive --agree-tos -m wingnakada@gmail.com
 ```
 
 #### 自動更新の設定
@@ -140,21 +178,21 @@ server {
 - [ ] UFWのインストール
 ```bash
 sudo apt install ufw -y
-
-# デフォルトポリシー設定
+```
 - [ ] デフォルトポリシーの設定
+```bash
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
-
-# 必要なポートを開放
+```
 - [ ] 必要なポートの開放
+```bash
 sudo ufw allow 22/tcp    # SSH（後でポート変更推奨）
 sudo ufw allow 80/tcp    # HTTP
 sudo ufw allow 443/tcp   # HTTPS
 sudo ufw allow 3306/tcp  # MySQL（内部接続のみ推奨）
-
-# ファイアウォール有効化
+```
 - [ ] ファイアウォールの有効化
+```bash
 sudo ufw enable
 sudo ufw status verbose
 ```
@@ -167,7 +205,7 @@ sudo ufw status verbose
 sudo vim /etc/ssh/sshd_config
 ```
 
-```
+```config
 # セキュリティ強化設定
 Port 22222                          # デフォルトポートから変更
 PermitRootLogin no                  # rootログイン禁止
@@ -831,6 +869,62 @@ systemctl restart redis
 systemctl restart winyx-test-api
 systemctl restart nginx
 ```
+
+---
+
+## 第10節 APIドキュメント管理
+
+### 3.10.1 Swagger仕様書の自動更新
+
+- [ ] 自動生成スクリプトの作成
+```bash
+vim /var/www/winyx/scripts/update_swagger.sh
+```
+
+```bash
+#!/bin/bash
+# Swagger仕様書更新スクリプト
+
+cd /var/www/winyx/backend/test_api
+
+# 最新のAPI定義からSwagger仕様書を生成
+goctl-swagger -f test_api.api -o /var/www/winyx/docs/swagger.json
+
+# 権限設定
+sudo chown www-data:www-data /var/www/winyx/docs/swagger.json
+sudo chmod 644 /var/www/winyx/docs/swagger.json
+
+echo "Swagger documentation updated: $(date)"
+```
+
+- [ ] 実行権限の付与
+```bash
+chmod +x /var/www/winyx/scripts/update_swagger.sh
+```
+
+### 3.10.2 CI/CDでの自動更新
+
+- [ ] GitHub Actionsでの自動更新設定
+```yaml
+# .github/workflows/deploy.yml に追加
+- name: Update API Documentation
+  run: |
+    cd backend/test_api
+    goctl-swagger -f test_api.api -o ../../docs/swagger.json
+```
+
+### 3.10.3 ドキュメントアクセス確認
+
+- [ ] ドキュメントの確認
+```bash
+# Swagger UIへのアクセス
+curl -I https://winyx.jp/docs/
+
+# API仕様書へのアクセス
+curl -I https://winyx.jp/docs/swagger.json
+```
+
+> 目的：APIドキュメントが正しく配信されることを確認
 
 ---
 

@@ -93,9 +93,12 @@ go install github.com/zeromicro/go-zero/tools/goctl@latest
 # protobufプラグイン
 go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+# goctl-swagger（OpenAPI/Swagger生成）
+go install github.com/zeromicro/goctl-swagger@latest
 ```
 
-> 目的：コード生成ツールの準備
+> 目的：コード生成とAPI仕様書生成ツールの準備
 
 ---
 
@@ -376,7 +379,34 @@ cd /var/www/winyx/backend/test_api
 
 > 目的：環境変数から実際の設定ファイルを作成
 
-#### 2.1.4.5 サービスの起動確認
+#### 2.1.4.5 API仕様書（Swagger）の生成
+
+- [x] Swagger仕様書の生成
+
+```bash
+cd /var/www/winyx/backend/test_api
+goctl-swagger -f test_api.api -o /var/www/winyx/docs/swagger.json
+```
+
+> 目的：APIの仕様書を自動生成
+
+- [x] Swagger UIの準備
+
+```bash
+# Swagger UIファイルをダウンロード
+wget https://github.com/swagger-api/swagger-ui/archive/refs/tags/v4.15.5.tar.gz
+tar -xzf v4.15.5.tar.gz
+sudo cp -r swagger-ui-4.15.5/dist/* /var/www/winyx/docs/swagger-ui/
+sudo chown -R www-data:www-data /var/www/winyx/docs/swagger-ui/
+
+# swagger.jsonを参照するよう設定
+sudo sed -i 's|https://petstore.swagger.io/v2/swagger.json|/docs/swagger.json|g' \
+  /var/www/winyx/docs/swagger-ui/swagger-initializer.js
+```
+
+> 目的：Swagger UIの配置とAPIドキュメントの表示準備
+
+#### 2.1.4.6 サービスの起動確認
 
 - [x] test_apiのビルドと起動
 
