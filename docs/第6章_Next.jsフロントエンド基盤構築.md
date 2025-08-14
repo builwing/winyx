@@ -1,6 +1,28 @@
 # 第6章 Next.jsフロントエンド基盤構築
 
-> 本章では、WinyxプロジェクトのNext.js 14（App Router）を使用したモダンなフロントエンド基盤構築について解説します。TypeScript、Tailwind CSS、shadcn/uiを活用した開発手法を提供します。
+> 本章では、WinyxプロジェクトのNext.js 15（App Router）を使用したモダンなフロントエンド基盤構築について解説します。TypeScript、Tailwind CSS、shadcnを活用した開発手法を提供します。
+
+## 重要な変更点（Next.js 15対応）
+
+### バージョン情報
+- **Next.js**: 14.x → 15.4.6
+- **React**: 18.x → 19.1.1  
+- **shadcn-ui**: 廃止 → **shadcn**（新パッケージ）
+
+### 主な変更内容
+1. **Next.js 15の新機能**
+   - swcMinifyがデフォルトで有効化
+   - App Routerの性能向上
+   - React 19との完全な互換性
+
+2. **shadcnパッケージの変更**
+   - `npx shadcn-ui@latest` → `npx shadcn@latest`
+   - Tailwind CSS v4対応（v3へのダウングレードも可能）
+   - 新しいコンポーネント構造
+
+3. **手動セットアップ推奨**
+   - create-next-appの代わりに手動セットアップを詳細に記載
+   - 既存プロジェクトへの統合手順を追加
 
 ---
 
@@ -8,67 +30,54 @@
 
 ### 6.1.1 プロジェクトの作成
 
-- [ ] Next.js 14プロジェクトの初期化
+Next.js 15では手動セットアップまたはcreate-next-appを使用します。既存プロジェクトの場合は以下の手順に従います。
+
+- [ ] プロジェクトディレクトリの作成と初期化
 ```bash
 cd /var/www/winyx
-npx create-next-app@latest frontend --typescript --tailwind --app --src-dir --import-alias "@/*"
+mkdir frontend
+cd frontend
 
-# 対話形式の選択
-# ✔ Would you like to use ESLint? → Yes
-# ✔ Would you like to use `src/` directory? → Yes
-# ✔ Would you like to use App Router? → Yes
-# ✔ Would you like to customize the default import alias? → No
+# package.jsonの初期化
+npm init -y
 ```
 
-### 6.1.2 必要なパッケージのインストール
-
-- [ ] 基本パッケージのインストール
+- [ ] Next.js 15と必要な依存関係のインストール
 ```bash
-cd /var/www/winyx/frontend
-npm install axios zustand @tanstack/react-query zod react-hook-form
-npm install @hookform/resolvers date-fns js-cookie
-npm install --save-dev @types/js-cookie
+# Next.js 15と基本パッケージ
+npm install next@latest react@latest react-dom@latest
+
+# TypeScript関連
+npm install --save-dev typescript @types/react @types/react-dom @types/node
+
+# Tailwind CSS関連
+npm install -D tailwindcss postcss autoprefixer
 ```
 
-- [ ] UIライブラリのインストール
-```bash
-# shadcn/uiの初期化
-npx shadcn-ui@latest init
+### 6.1.2 設定ファイルの作成
 
-# 設定選択
-# ✔ Which style would you like to use? → Default
-# ✔ Which color would you like to use as base color? → Slate
-# ✔ Would you like to use CSS variables for colors? → Yes
-
-# 必要なコンポーネントの追加
-npx shadcn-ui@latest add button
-npx shadcn-ui@latest add form
-npx shadcn-ui@latest add input
-npx shadcn-ui@latest add card
-npx shadcn-ui@latest add dialog
-npx shadcn-ui@latest add toast
-npx shadcn-ui@latest add dropdown-menu
-npx shadcn-ui@latest add avatar
-npx shadcn-ui@latest add table
-npx shadcn-ui@latest add tabs
-npx shadcn-ui@latest add alert
+- [ ] package.jsonスクリプトの設定
+```json
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  }
+}
 ```
 
-### 6.1.3 TypeScript設定
-
-- [ ] TypeScript設定の最適化
-```bash
-vim /var/www/winyx/frontend/tsconfig.json
-```
-
+- [ ] TypeScript設定（tsconfig.json）
 ```json
 {
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "es5",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
+    "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
@@ -77,35 +86,177 @@ vim /var/www/winyx/frontend/tsconfig.json
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     "plugins": [
       {
         "name": "next"
       }
-    ],
-    "paths": {
-      "@/*": ["./src/*"],
-      "@/components/*": ["./src/components/*"],
-      "@/lib/*": ["./src/lib/*"],
-      "@/hooks/*": ["./src/hooks/*"],
-      "@/types/*": ["./src/types/*"],
-      "@/utils/*": ["./src/utils/*"],
-      "@/store/*": ["./src/store/*"],
-      "@/services/*": ["./src/services/*"]
-    }
+    ]
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
 }
 ```
 
-### 6.1.4 ESLint設定
+- [ ] Next.js設定（next.config.js）
+```javascript
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+}
 
-- [ ] ESLint設定のカスタマイズ
-```bash
-vim /var/www/winyx/frontend/.eslintrc.json
+module.exports = nextConfig
 ```
 
-```json
+- [ ] Tailwind CSS設定
+```bash
+# tailwind.config.jsの作成
+cat > tailwind.config.js << 'EOF'
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+EOF
+
+# postcss.config.jsの作成
+cat > postcss.config.js << 'EOF'
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+EOF
+```
+
+### 6.1.3 基本ディレクトリ構造の作成
+
+- [ ] 必要なディレクトリとファイルの作成
+```bash
+# ディレクトリ構造の作成
+mkdir -p src/app
+mkdir -p src/components/ui
+mkdir -p src/lib/api
+mkdir -p src/types/generated
+
+# ルートレイアウトの作成
+cat > src/app/layout.tsx << 'EOF'
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+import './globals.css'
+
+const inter = Inter({ subsets: ['latin'] })
+
+export const metadata: Metadata = {
+  title: 'Winyx Dashboard',
+  description: 'System monitoring dashboard for Winyx project',
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="ja">
+      <body className={inter.className}>{children}</body>
+    </html>
+  )
+}
+EOF
+
+# グローバルCSSの作成
+cat > src/app/globals.css << 'EOF'
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+EOF
+
+# ホームページの作成
+cat > src/app/page.tsx << 'EOF'
+export default function Home() {
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center p-24">
+      <h1 className="text-4xl font-bold">Winyx Project</h1>
+      <p className="mt-4 text-xl">System Monitoring Dashboard</p>
+      <a 
+        href="/dashboard" 
+        className="mt-8 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+      >
+        Go to Dashboard
+      </a>
+    </main>
+  )
+}
+EOF
+```
+
+### 6.1.4 追加パッケージのインストール
+
+- [ ] 基本パッケージのインストール
+```bash
+# API通信とデータ管理
+npm install axios zustand @tanstack/react-query zod react-hook-form
+npm install @hookform/resolvers date-fns js-cookie
+npm install --save-dev @types/js-cookie
+
+# アイコンライブラリ
+npm install lucide-react
+```
+
+### 6.1.5 shadcnの初期化（最新版対応）
+
+- [ ] shadcn（旧shadcn-ui）の初期化
+```bash
+# shadcnの初期化（最新バージョン）
+npx shadcn@latest init
+
+# 設定選択（プロンプトが表示される場合）
+# ✔ Which color would you like to use as base color? → Neutral
+# ✔ Do you want to use CSS variables for theming? → Yes
+
+# 成功時のメッセージ:
+# ✔ Checking registry.
+# ✔ Installing dependencies.
+# ✔ Created 1 file: src/lib/utils.ts
+```
+
+- [ ] 必要なUIコンポーネントの追加
+```bash
+# UIコンポーネントの追加（一括インストール）
+npx shadcn@latest add card badge button progress
+
+# 追加コンポーネント（必要に応じて）
+npx shadcn@latest add form
+npx shadcn@latest add input  
+npx shadcn@latest add dialog
+npx shadcn@latest add toast
+npx shadcn@latest add dropdown-menu
+npx shadcn@latest add avatar
+npx shadcn@latest add table
+npx shadcn@latest add tabs
+npx shadcn@latest add alert
+```
+
+### 6.1.6 ESLint設定（オプション）
+
+- [ ] ESLintのインストールと設定
+```bash
+# ESLintと関連パッケージのインストール
+npm install --save-dev eslint eslint-config-next @typescript-eslint/parser @typescript-eslint/eslint-plugin
+
+# .eslintrc.jsonの作成
+cat > .eslintrc.json << 'EOF'
 {
   "extends": [
     "next/core-web-vitals",
@@ -124,6 +275,94 @@ vim /var/www/winyx/frontend/.eslintrc.json
     "no-console": ["warn", { "allow": ["warn", "error"] }]
   }
 }
+EOF
+```
+
+### 6.1.7 開発サーバーの起動
+
+- [ ] 開発環境の起動と確認
+```bash
+# 開発サーバーの起動
+npm run dev
+
+# ブラウザでアクセス
+# http://localhost:3000 または http://localhost:3001（ポート3000が使用中の場合）
+
+# ビルドの確認
+npm run build
+npm run start
+```
+
+### 6.1.8 トラブルシューティング
+
+**shadcnエラーの場合:**
+```bash
+# フレームワークが検出されない場合
+# components.jsonを手動で作成
+cat > components.json << 'EOF'
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "default",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "tailwind.config.js",
+    "css": "src/app/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true
+  },
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils"
+  }
+}
+EOF
+
+# 再度shadcnを初期化
+npx shadcn@latest init
+```
+
+**Tailwind CSS v4エラーの場合:**
+```bash
+# PostCSS設定をv4対応に更新
+npm install -D @tailwindcss/postcss
+
+# postcss.config.jsを修正
+cat > postcss.config.js << 'EOF'
+module.exports = {
+  plugins: {
+    '@tailwindcss/postcss': {},
+    autoprefixer: {},
+  },
+}
+EOF
+
+# または、Tailwind CSS v3を使用する場合
+npm uninstall tailwindcss @tailwindcss/postcss
+npm install -D tailwindcss@^3.4.0
+
+# v3用のpostcss.config.jsに戻す
+cat > postcss.config.js << 'EOF'
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+EOF
+```
+
+**React Query v5エラーの場合:**
+```typescript
+// src/lib/providers.tsx でcacheTimeをgcTimeに変更
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 30, // v5では cacheTime から gcTime に変更
+    },
+  },
+})
 ```
 
 ---
@@ -190,18 +429,15 @@ NEXT_PUBLIC_ENABLE_ANALYTICS=false
 NEXT_PUBLIC_ENABLE_DEBUG=true
 ```
 
-### 6.2.3 Next.js設定
+### 6.2.3 Next.js 15の高度な設定
 
-- [ ] Next.js設定ファイル
-```bash
-vim /var/www/winyx/frontend/next.config.js
-```
-
+- [ ] Next.js設定ファイル（完全版）
 ```javascript
+// next.config.js
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
+  // Next.js 15では swcMinify がデフォルトで有効のため削除
   
   // 画像ドメイン設定
   images: {
