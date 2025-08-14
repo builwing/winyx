@@ -1,0 +1,228 @@
+syntax = "v1"
+
+info(
+    title: "Winyx Internal Service Communication API"
+    desc: "マイクロサービス間通信用内部API仕様"
+    author: "Winyx Team"
+    version: "v1.0"
+)
+
+// ======== 共通型定義 ========
+
+// サービス間認証トークン
+type ServiceAuthToken {
+    ServiceName  string `json:"service_name"`
+    IssuedAt     int64  `json:"issued_at"`
+    ExpiresAt    int64  `json:"expires_at"`
+    Signature    string `json:"signature"`
+}
+
+// ======== UserService → 他サービス ========
+
+// ユーザー検証リクエスト（他サービスから呼び出される）
+type (
+    ValidateUserReq {
+        UserId      int64  `json:"user_id"`
+        Token       string `json:"token,optional"`
+    }
+    
+    ValidateUserRes {
+        Valid       bool   `json:"valid"`
+        User        UserBasicInfo `json:"user,optional"`
+        Message     string `json:"message"`
+    }
+    
+    UserBasicInfo {
+        UserId      int64  `json:"user_id"`
+        Name        string `json:"name"`
+        Email       string `json:"email"`
+        Status      string `json:"status"`
+        Roles       []string `json:"roles"`
+    }
+)
+
+// ユーザー権限確認
+type (
+    CheckPermissionReq {
+        UserId      int64  `json:"user_id"`
+        Resource    string `json:"resource"`
+        Action      string `json:"action"`
+    }
+    
+    CheckPermissionRes {
+        Allowed     bool   `json:"allowed"`
+        Reason      string `json:"reason,optional"`
+    }
+)
+
+// ======== OrderService → UserService ========
+
+// 注文作成時のユーザー確認
+type (
+    GetUserForOrderReq {
+        UserId      int64  `json:"user_id"`
+    }
+    
+    GetUserForOrderRes {
+        User        OrderUserInfo `json:"user"`
+        Success     bool   `json:"success"`
+        Message     string `json:"message"`
+    }
+    
+    OrderUserInfo {
+        UserId          int64  `json:"user_id"`
+        Name            string `json:"name"`
+        Email           string `json:"email"`
+        Phone           string `json:"phone,optional"`
+        Address         string `json:"address,optional"`
+        PaymentMethods  []PaymentMethod `json:"payment_methods,optional"`
+    }
+    
+    PaymentMethod {
+        Type        string `json:"type"`
+        Last4       string `json:"last4,optional"`
+        IsDefault   bool   `json:"is_default"`
+    }
+)
+
+// ======== NotificationService → UserService ========
+
+// 通知送信用ユーザー情報取得
+type (
+    GetUsersForNotificationReq {
+        UserIds     []int64 `json:"user_ids,optional"`
+        Roles       []string `json:"roles,optional"`
+        Status      string  `json:"status,optional"`
+    }
+    
+    GetUsersForNotificationRes {
+        Users       []NotificationUser `json:"users"`
+        Total       int    `json:"total"`
+    }
+    
+    NotificationUser {
+        UserId      int64  `json:"user_id"`
+        Name        string `json:"name"`
+        Email       string `json:"email"`
+        Phone       string `json:"phone,optional"`
+        Preferences NotificationPreferences `json:"preferences"`
+    }
+    
+    NotificationPreferences {
+        EmailEnabled    bool `json:"email_enabled"`
+        SmsEnabled      bool `json:"sms_enabled"`
+        PushEnabled     bool `json:"push_enabled"`
+        DoNotDisturb    bool `json:"do_not_disturb"`
+    }
+)
+
+// ======== AnalyticsService → 各サービス ========
+
+// イベント収集
+type (
+    CollectEventReq {
+        ServiceName string         `json:"service_name"`
+        EventType   string         `json:"event_type"`
+        EventData   interface{}    `json:"event_data"`
+        UserId      int64          `json:"user_id,optional"`
+        SessionId   string         `json:"session_id,optional"`
+        Timestamp   int64          `json:"timestamp"`
+    }
+    
+    CollectEventRes {
+        EventId     string `json:"event_id"`
+        Success     bool   `json:"success"`
+    }
+)
+
+// ======== HealthCheck共通 ========
+
+type (
+    HealthCheckReq {
+        ServiceName string `json:"service_name"`
+    }
+    
+    HealthCheckRes {
+        Status      string `json:"status"` // healthy, degraded, unhealthy
+        Version     string `json:"version"`
+        Uptime      int64  `json:"uptime"`
+        Checks      []HealthCheckItem `json:"checks"`
+    }
+    
+    HealthCheckItem {
+        Name        string `json:"name"`
+        Status      string `json:"status"`
+        Message     string `json:"message,optional"`
+        Latency     int64  `json:"latency_ms,optional"`
+    }
+)
+
+// ======== サービスメトリクス ========
+
+type (
+    ServiceMetrics {
+        ServiceName     string  `json:"service_name"`
+        RequestCount    int64   `json:"request_count"`
+        ErrorCount      int64   `json:"error_count"`
+        AvgLatency      float64 `json:"avg_latency_ms"`
+        P95Latency      float64 `json:"p95_latency_ms"`
+        P99Latency      float64 `json:"p99_latency_ms"`
+        ActiveConns     int     `json:"active_connections"`
+        MemoryUsage     int64   `json:"memory_usage_bytes"`
+        CpuUsage        float64 `json:"cpu_usage_percent"`
+    }
+)
+
+// ======== API エンドポイント定義 ========
+
+@server(
+    prefix: /internal/v1
+    group: internal
+    middleware: ServiceAuthMiddleware
+)
+service internal-api {
+    // UserService内部API
+    @handler validateUser
+    post /users/validate (ValidateUserReq) returns (ValidateUserRes)
+    
+    @handler checkPermission
+    post /users/permission (CheckPermissionReq) returns (CheckPermissionRes)
+    
+    @handler getUserForOrder
+    get /users/:user_id/order-info returns (GetUserForOrderRes)
+    
+    @handler getUsersForNotification
+    post /users/notification-targets (GetUsersForNotificationReq) returns (GetUsersForNotificationRes)
+    
+    // 共通ヘルスチェック
+    @handler healthCheck
+    get /health (HealthCheckReq) returns (HealthCheckRes)
+    
+    // イベント収集
+    @handler collectEvent
+    post /events/collect (CollectEventReq) returns (CollectEventRes)
+    
+    // メトリクス取得
+    @handler getMetrics
+    get /metrics returns (ServiceMetrics)
+}
+
+// ======== サービス間RPC定義（gRPC用） ========
+
+// 将来的にgRPCへの移行を考慮した定義
+// この部分は.protoファイルへの変換を想定
+
+/*
+service UserServiceRPC {
+    rpc ValidateUser(ValidateUserReq) returns (ValidateUserRes);
+    rpc CheckPermission(CheckPermissionReq) returns (CheckPermissionRes);
+    rpc GetUserForOrder(GetUserForOrderReq) returns (GetUserForOrderRes);
+    rpc GetUsersForNotification(GetUsersForNotificationReq) returns (GetUsersForNotificationRes);
+}
+
+service CommonServiceRPC {
+    rpc HealthCheck(HealthCheckReq) returns (HealthCheckRes);
+    rpc CollectEvent(CollectEventReq) returns (CollectEventRes);
+    rpc GetMetrics(Empty) returns (ServiceMetrics);
+}
+*/

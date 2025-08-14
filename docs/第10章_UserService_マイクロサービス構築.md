@@ -44,7 +44,7 @@
 
 ### 10.2.1 Go-Zero API契約ファイル作成
 
-- [ ] API契約ファイルの作成
+- [x] API契約ファイルの作成
 
 ```bash
 mkdir -p /var/www/winyx/contracts/user_service
@@ -245,7 +245,7 @@ user_profiles (id, user_id, avatar_url, bio, phone, address, birth_date, gender,
 ```
 
 #### UserService用拡張テーブル
-- [ ] UserService用の権限管理テーブルを追加
+- [x] UserService用の権限管理テーブルを追加
 
 ```bash
 vim /var/www/winyx/contracts/user_service/schema_extension.sql
@@ -356,7 +356,7 @@ ON DUPLICATE KEY UPDATE created_at = created_at;
 
 ### 10.3.1 Go-Zero プロジェクト生成
 
-- [ ] UserService プロジェクト初期化
+- [x] UserService プロジェクト初期化
 
 ```bash
 cd /var/www/winyx/backend
@@ -364,7 +364,7 @@ goctl api new user_service --style gozero
 cd user_service
 ```
 
-- [ ] API契約からコード生成
+- [x] API契約からコード生成
 
 ```bash
 # API契約をコピー
@@ -376,7 +376,7 @@ goctl api go -api user.api -dir . --style gozero
 
 ### 10.3.2 設定ファイル作成
 
-- [ ] 設定ファイルの作成
+- [x] 設定ファイルの作成
 
 ```bash
 mkdir -p etc
@@ -429,7 +429,7 @@ goctl model mysql ddl -src /var/www/winyx/contracts/user_service/schema.sql -dir
 
 ### 10.3.4 ビジネスロジック実装
 
-- [ ] ユーザー登録ロジック
+- [x] ユーザー登録ロジック
 
 ```bash
 vim internal/logic/user/registerlogic.go
@@ -527,7 +527,7 @@ func (l *RegisterLogic) generateJWT(userId int64, username string) (string, erro
 }
 ```
 
-- [ ] ログインロジック
+- [x] ログインロジック
 
 ```bash
 vim internal/logic/user/loginlogic.go
@@ -620,7 +620,7 @@ func (l *LoginLogic) generateJWT(userId int64, username string) (string, int64, 
 
 ### 10.3.5 ミドルウェア実装
 
-- [ ] 管理者認証ミドルウェア
+- [x] 管理者認証ミドルウェア
 
 ```bash
 mkdir -p internal/middleware
@@ -670,14 +670,14 @@ func (m *AdminAuthMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 
 ### 10.3.6 サービス起動
 
-- [ ] 依存関係解決とビルド
+- [x] 依存関係解決とビルド
 
 ```bash
 go mod tidy
 go build -o user_service userapi.go
 ```
 
-- [ ] サービス起動テスト
+- [x] サービス起動テスト
 
 ```bash
 ./user_service -f etc/user_service-api.yaml
@@ -689,7 +689,7 @@ go build -o user_service userapi.go
 
 ### 10.4.1 型定義とAPIクライアント
 
-- [ ] TypeScript型定義の作成
+- [x] TypeScript型定義の作成
 
 ```bash
 vim /var/www/winyx/frontend/src/types/user.ts
@@ -761,7 +761,7 @@ export interface AuthState {
 }
 ```
 
-- [ ] APIクライアントの作成
+- [x] APIクライアントの作成
 
 ```bash
 vim /var/www/winyx/frontend/src/lib/api/user.ts
@@ -834,7 +834,7 @@ export const userAPI = new UserAPI();
 
 ### 10.4.2 認証状態管理 (Zustand)
 
-- [ ] 認証ストアの作成
+- [x] 認証ストアの作成
 
 ```bash
 vim /var/www/winyx/frontend/src/lib/stores/authStore.ts
@@ -920,7 +920,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
 ### 10.4.3 React Query フック
 
-- [ ] 認証フックの作成
+- [x] 認証フックの作成
 
 ```bash
 vim /var/www/winyx/frontend/src/lib/hooks/useAuth.ts
@@ -1022,7 +1022,7 @@ export function useLogout() {
 
 ### 10.4.4 ユーザー管理コンポーネント
 
-- [ ] ログインページの作成
+- [x] ログインページの作成
 
 ```bash
 mkdir -p /var/www/winyx/frontend/src/app/login
@@ -1132,7 +1132,7 @@ export default function LoginPage() {
 }
 ```
 
-- [ ] ユーザー一覧ページ（管理者用）
+- [x] ユーザー一覧ページ（管理者用）
 
 ```bash
 mkdir -p /var/www/winyx/frontend/src/app/admin
@@ -1487,7 +1487,349 @@ LimitNOFILE=65536
 WantedBy=multi-user.target
 ```
 
-### 10.5.3 デプロイ手順
+### 10.5.3 マイクロサービス間通信設定
+
+#### サービスディスカバリー設定
+
+- [ ] 内部サービス通信用設定ファイル作成
+
+```bash
+vim /var/www/winyx/backend/config/services.yaml
+```
+
+```yaml
+# サービスディスカバリー設定
+Services:
+  UserService:
+    Name: user_service
+    Host: 127.0.0.1
+    Port: 8889
+    Protocol: http
+    HealthCheck: /health
+    Timeout: 30s
+    
+  TestAPI:
+    Name: test_api
+    Host: 127.0.0.1
+    Port: 8888
+    Protocol: http
+    HealthCheck: /health
+    Timeout: 30s
+    
+  # 将来のサービス追加用
+  OrderService:
+    Name: order_service
+    Host: 127.0.0.1
+    Port: 8890
+    Protocol: http
+    HealthCheck: /health
+    Timeout: 30s
+    
+# サービスメッシュ設定
+ServiceMesh:
+  RetryPolicy:
+    MaxAttempts: 3
+    RetryOn: "5xx,reset,connect-failure,timeout"
+    PerTryTimeout: 10s
+    
+  CircuitBreaker:
+    ConsecutiveErrors: 5
+    Interval: 30s
+    BaseEjectionTime: 30s
+    MaxEjectionPercent: 50
+```
+
+#### RPC通信実装
+
+- [ ] サービス間通信用HTTPクライアント作成
+
+```bash
+vim /var/www/winyx/backend/common/httpclient/client.go
+```
+
+```go
+package httpclient
+
+import (
+    "context"
+    "encoding/json"
+    "fmt"
+    "io"
+    "net/http"
+    "time"
+    
+    "github.com/zeromicro/go-zero/core/breaker"
+    "github.com/zeromicro/go-zero/core/logx"
+)
+
+type ServiceClient struct {
+    client  *http.Client
+    breaker breaker.Breaker
+    baseURL string
+}
+
+// NewServiceClient 新しいサービスクライアントを作成
+func NewServiceClient(baseURL string) *ServiceClient {
+    return &ServiceClient{
+        client: &http.Client{
+            Timeout: 30 * time.Second,
+            Transport: &http.Transport{
+                MaxIdleConns:        100,
+                MaxIdleConnsPerHost: 10,
+                IdleConnTimeout:     90 * time.Second,
+            },
+        },
+        breaker: breaker.NewBreaker(),
+        baseURL: baseURL,
+    }
+}
+
+// Get GETリクエストを送信
+func (c *ServiceClient) Get(ctx context.Context, path string, headers map[string]string) ([]byte, error) {
+    return c.doRequest(ctx, http.MethodGet, path, nil, headers)
+}
+
+// Post POSTリクエストを送信
+func (c *ServiceClient) Post(ctx context.Context, path string, body interface{}, headers map[string]string) ([]byte, error) {
+    jsonBody, err := json.Marshal(body)
+    if err != nil {
+        return nil, fmt.Errorf("failed to marshal request body: %w", err)
+    }
+    return c.doRequest(ctx, http.MethodPost, path, jsonBody, headers)
+}
+
+// doRequest リクエスト実行の共通処理
+func (c *ServiceClient) doRequest(ctx context.Context, method, path string, body []byte, headers map[string]string) ([]byte, error) {
+    url := c.baseURL + path
+    
+    // サーキットブレーカーチェック
+    err := c.breaker.Do(url, func() error {
+        req, err := http.NewRequestWithContext(ctx, method, url, nil)
+        if err != nil {
+            return err
+        }
+        
+        // ヘッダー設定
+        req.Header.Set("Content-Type", "application/json")
+        for k, v := range headers {
+            req.Header.Set(k, v)
+        }
+        
+        // リクエストボディ設定
+        if body != nil {
+            req.Body = io.NopCloser(bytes.NewReader(body))
+        }
+        
+        // リクエスト実行
+        resp, err := c.client.Do(req)
+        if err != nil {
+            return err
+        }
+        defer resp.Body.Close()
+        
+        // レスポンス読み取り
+        respBody, err := io.ReadAll(resp.Body)
+        if err != nil {
+            return err
+        }
+        
+        // ステータスコードチェック
+        if resp.StatusCode >= 400 {
+            return fmt.Errorf("service returned error: status=%d, body=%s", resp.StatusCode, string(respBody))
+        }
+        
+        return nil
+    })
+    
+    if err != nil {
+        logx.Errorf("Request failed: %v", err)
+        return nil, err
+    }
+    
+    return body, nil
+}
+```
+
+### 10.5.4 APIゲートウェイ拡張設定
+
+#### Kong APIゲートウェイ設定（オプション）
+
+- [ ] Kong設定ファイル作成
+
+```bash
+vim /var/www/winyx/backend/gateway/kong.yaml
+```
+
+```yaml
+_format_version: "2.1"
+
+services:
+  - name: user-service
+    url: http://127.0.0.1:8889
+    protocol: http
+    host: 127.0.0.1
+    port: 8889
+    path: /
+    retries: 3
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    
+    routes:
+      - name: user-routes
+        paths:
+          - /api/v1/users
+        strip_path: false
+        preserve_host: true
+        
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 100
+          hour: 10000
+          policy: local
+          
+      - name: cors
+        config:
+          origins:
+            - https://winyx.jp
+            - http://localhost:3000
+          methods:
+            - GET
+            - POST
+            - PUT
+            - DELETE
+            - OPTIONS
+          headers:
+            - Accept
+            - Authorization
+            - Content-Type
+          exposed_headers:
+            - X-Auth-Token
+          credentials: true
+          max_age: 3600
+          
+      - name: jwt
+        config:
+          key_claim_name: kid
+          secret_is_base64: false
+          
+      - name: request-transformer
+        config:
+          add:
+            headers:
+              - X-Service-Name:user-service
+              - X-Request-ID:$(uuid)
+
+  - name: test-api-service
+    url: http://127.0.0.1:8888
+    protocol: http
+    host: 127.0.0.1
+    port: 8888
+    path: /
+    
+    routes:
+      - name: test-api-routes
+        paths:
+          - /api/v1/test
+        strip_path: false
+        preserve_host: true
+
+# グローバルプラグイン
+plugins:
+  - name: prometheus
+    config:
+      per_consumer: true
+      
+  - name: syslog
+    config:
+      successful_severity: info
+      client_errors_severity: warning
+      server_errors_severity: err
+```
+
+#### サービスメッシュ実装
+
+- [ ] サービス間認証ミドルウェア作成
+
+```bash
+vim /var/www/winyx/backend/common/middleware/service_auth.go
+```
+
+```go
+package middleware
+
+import (
+    "crypto/hmac"
+    "crypto/sha256"
+    "encoding/hex"
+    "net/http"
+    "strings"
+    "time"
+    
+    "github.com/zeromicro/go-zero/rest/httpx"
+)
+
+const (
+    ServiceAuthHeader = "X-Service-Auth"
+    ServiceNameHeader = "X-Service-Name"
+    TimestampHeader   = "X-Timestamp"
+)
+
+// ServiceAuthMiddleware サービス間認証ミドルウェア
+func ServiceAuthMiddleware(secret string) func(next http.HandlerFunc) http.HandlerFunc {
+    return func(next http.HandlerFunc) http.HandlerFunc {
+        return func(w http.ResponseWriter, r *http.Request) {
+            // 内部サービスからのリクエストをチェック
+            serviceName := r.Header.Get(ServiceNameHeader)
+            if serviceName == "" {
+                // 外部リクエストはそのまま通す
+                next(w, r)
+                return
+            }
+            
+            // タイムスタンプチェック
+            timestamp := r.Header.Get(TimestampHeader)
+            if timestamp == "" {
+                httpx.Error(w, errors.New("missing timestamp"))
+                return
+            }
+            
+            // タイムスタンプの有効性チェック（5分以内）
+            reqTime, err := time.Parse(time.RFC3339, timestamp)
+            if err != nil || time.Since(reqTime) > 5*time.Minute {
+                httpx.Error(w, errors.New("invalid or expired timestamp"))
+                return
+            }
+            
+            // 署名チェック
+            authHeader := r.Header.Get(ServiceAuthHeader)
+            if authHeader == "" {
+                httpx.Error(w, errors.New("missing service auth"))
+                return
+            }
+            
+            // HMAC署名の検証
+            expectedSignature := generateServiceSignature(serviceName, timestamp, secret)
+            if !hmac.Equal([]byte(authHeader), []byte(expectedSignature)) {
+                httpx.Error(w, errors.New("invalid service signature"))
+                return
+            }
+            
+            next(w, r)
+        }
+    }
+}
+
+// generateServiceSignature サービス署名を生成
+func generateServiceSignature(serviceName, timestamp, secret string) string {
+    h := hmac.New(sha256.New, []byte(secret))
+    h.Write([]byte(serviceName + ":" + timestamp))
+    return hex.EncodeToString(h.Sum(nil))
+}
+```
+
+### 10.5.5 デプロイ手順
 
 - [ ] UserService デプロイ
 

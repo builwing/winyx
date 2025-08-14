@@ -1,0 +1,14 @@
+# Generated files
+generated/
+*.gen.go
+openapi.json
+*.pb.go
+
+# Build artifacts
+build/
+dist/
+
+# IDE
+.vscode/
+.idea/
+
