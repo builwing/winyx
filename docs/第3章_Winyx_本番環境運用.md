@@ -36,6 +36,11 @@ server {
     listen 80;
     server_name winyx.jp www.winyx.jp;
     
+    # IPアドレス制限
+    allow 202.79.96.61;     # 会社のIPアドレス
+    allow 101.111.202.127;  # 自宅のIPアドレス
+    deny all;               # 上記以外は全て拒否
+    
     # セキュリティヘッダー
     include /etc/nginx/snippets/security-headers.conf;
     
@@ -80,6 +85,11 @@ server {
     listen 80;
     server_name api.winyx.jp;
     
+    # IPアドレス制限
+    allow 202.79.96.61;     # 会社のIPアドレス
+    allow 101.111.202.127;  # 自宅のIPアドレス
+    deny all;               # 上記以外は全て拒否
+    
     # セキュリティヘッダー
     include /etc/nginx/snippets/security-headers.conf;
     
@@ -119,9 +129,26 @@ server {
 #### 設定の有効化
 - [x] Nginx設定の有効化
 ```bash
+sudo cp /var/www/winyx/nginx_winyx_config_with_ip_restriction.tmp /etc/nginx/sites-available/winyx
 sudo ln -s /etc/nginx/sites-available/winyx /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl restart nginx
+```
+
+#### IPアドレス制限について
+- [ ] IPアドレス制限の確認
+上記設定では以下のIPアドレスのみアクセスを許可：
+- `202.79.96.61` - 会社のIPアドレス
+- `101.111.202.127` - 自宅のIPアドレス
+
+**重要な注意点：**
+1. **管理者アクセス確保**: 設定変更前に許可IPからアクセスできることを確認
+2. **緊急時対応**: 設定ミス時はコンソールアクセスで修正が必要
+3. **動的IP対応**: ISPが動的IPを使用している場合は定期的な更新が必要
+
+```bash
+# IPアドレス制限をテスト
+curl -I http://winyx.jp  # 許可IPから実行
 ```
 
 ### 3.1.2 SSL/TLS証明書の設定（Let's Encrypt）
