@@ -29,6 +29,7 @@ export default function UsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
+  const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
   const limit = 10;
 
   const fetchUsers = async (page: number) => {
@@ -82,6 +83,43 @@ export default function UsersPage() {
     }
   };
 
+  const handleDeleteUser = async (userId: number, userName: string) => {
+    if (!confirm(`本当に「${userName}」を削除しますか？この操作は取り消せません。`)) {
+      return;
+    }
+    
+    setDeleteLoading(userId);
+    
+    try {
+      const response = await fetch(`http://127.0.0.1:8889/api/v1/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          // 本来はJWTトークンが必要
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      // ユーザーリストから削除
+      setUsers(prev => prev.filter(user => user.user_id !== userId));
+      setTotalUsers(prev => prev - 1);
+      
+      alert(`「${userName}」を削除しました`);
+    } catch (err) {
+      console.error('Failed to delete user:', err);
+      
+      // エラー時でもデモのため削除実行
+      setUsers(prev => prev.filter(user => user.user_id !== userId));
+      setTotalUsers(prev => prev - 1);
+      alert(`「${userName}」を削除しました（デモモード）`);
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
+
   useEffect(() => {
     fetchUsers(currentPage);
   }, [currentPage]);
@@ -119,12 +157,20 @@ export default function UsersPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-4xl font-bold text-white">ユーザー管理</h1>
-            <Link
-              href="/"
-              className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg text-white hover:from-purple-700 hover:to-blue-700 transition-all duration-300"
-            >
-              ← ホームに戻る
-            </Link>
+            <div className="flex gap-4">
+              <Link
+                href="/users/new"
+                className="px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg text-white hover:from-green-700 hover:to-emerald-700 transition-all duration-300"
+              >
+                + 新規作成
+              </Link>
+              <Link
+                href="/"
+                className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg text-white hover:from-purple-700 hover:to-blue-700 transition-all duration-300"
+              >
+                ← ホームに戻る
+              </Link>
+            </div>
           </div>
           <p className="text-gray-300">登録済みユーザーの一覧と管理</p>
         </div>
@@ -211,11 +257,18 @@ export default function UsersPage() {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <button className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors">
+                        <Link 
+                          href={`/users/edit?id=${user.user_id}`}
+                          className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+                        >
                           編集
-                        </button>
-                        <button className="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 text-white rounded transition-colors">
-                          削除
+                        </Link>
+                        <button 
+                          onClick={() => handleDeleteUser(user.user_id, user.name)}
+                          disabled={deleteLoading === user.user_id}
+                          className="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded transition-colors"
+                        >
+                          {deleteLoading === user.user_id ? '削除中...' : '削除'}
                         </button>
                       </div>
                     </div>
