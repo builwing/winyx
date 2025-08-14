@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -13,8 +15,15 @@ export default function Home() {
       {/* Navigation */}
       <nav className="relative z-10 p-6">
         <div className="flex justify-between items-center">
-          <div className="text-2xl font-bold text-white">
-            Winyx<span className="text-purple-400">.jp</span>
+          <div className="flex items-center">
+            <Image
+              src="/winyx_logo.png"
+              alt="Winyx"
+              width={120}
+              height={40}
+              className="h-8 w-auto"
+              priority
+            />
           </div>
           <div className="hidden md:flex space-x-6 text-gray-300">
             <a href="#features" className="hover:text-purple-400 transition-colors">機能</a>
@@ -27,18 +36,17 @@ export default function Home() {
       {/* Hero Section */}
       <main className="relative z-10 flex flex-col items-center justify-center text-center px-6 py-20">
         <div className="max-w-4xl mx-auto">
-          {/* Badge */}
-          <div className="inline-flex items-center rounded-full px-4 py-2 mb-8 bg-purple-500/10 border border-purple-500/20 backdrop-blur-sm">
-            <span className="text-purple-400 text-sm font-medium">🚀 Next.js 15 & Go-Zero</span>
-          </div>
-
           {/* Main Title */}
-          <h1 className="text-6xl md:text-7xl font-bold text-white mb-6 leading-tight">
-            Winyx
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
-              プロジェクト
-            </span>
-          </h1>
+          <div className="mb-8 flex justify-center">
+            <Image
+              src="/winyx_logo.png"
+              alt="Winyx プロジェクト"
+              width={600}
+              height={180}
+              className="w-auto h-32 md:h-40 lg:h-48"
+              priority
+            />
+          </div>
 
           {/* Subtitle */}
           <p className="text-xl md:text-2xl text-gray-300 mb-12 leading-relaxed max-w-3xl">

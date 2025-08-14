@@ -24,6 +24,7 @@ import {
   Clock,
   Database,
   HardDrive,
+  Home,
   MemoryStick,
   Network,
   RefreshCcw,
@@ -32,6 +33,7 @@ import {
   Users,
   Wifi
 } from 'lucide-react';
+import Link from 'next/link';
 
 export default function DashboardPage() {
   const [refreshInterval, setRefreshInterval] = useState<number | null>(null);
@@ -74,8 +76,17 @@ export default function DashboardPage() {
         {/* ヘッダー */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pt-8">
           <div>
-            <div className="inline-flex items-center px-3 py-1 mb-3 bg-blue-500/10 border border-blue-500/20 rounded-full backdrop-blur-sm">
-              <span className="text-blue-400 text-xs font-medium">🚀 REAL-TIME MONITORING</span>
+            <div className="flex items-center gap-4 mb-3">
+              <Link 
+                href="/"
+                className="inline-flex items-center px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl backdrop-blur-sm transition-all duration-300 text-white hover:text-blue-300 group"
+              >
+                <Home className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+                <span className="font-medium">トップページ</span>
+              </Link>
+              <div className="inline-flex items-center px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full backdrop-blur-sm">
+                <span className="text-blue-400 text-xs font-medium">🚀 REAL-TIME MONITORING</span>
+              </div>
             </div>
             <h1 className="text-4xl lg:text-5xl font-bold text-white mb-2">
               システムダッシュボード
