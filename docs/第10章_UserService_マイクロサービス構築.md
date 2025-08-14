@@ -417,7 +417,7 @@ RateLimit:
 
 ### 10.3.3 データベースモデル生成
 
-- [ ] データベースモデルの生成
+- [x] データベースモデルの生成
 
 ```bash
 # データベーススキーマを適用
@@ -1291,7 +1291,7 @@ export default function AdminUsersPage() {
 
 ### 10.5.1 Nginx設定更新
 
-- [ ] UserService用のUpstream追加
+- [x] UserService用のUpstream追加
 
 ```bash
 vim /var/www/winyx/nginx_user_service_config.tmp
@@ -1453,7 +1453,7 @@ server {
 
 ### 10.5.2 systemd サービス設定
 
-- [ ] UserService のsystemdサービス作成
+- [x] UserService のsystemdサービス作成
 
 ```bash
 sudo vim /etc/systemd/system/winyx-user-service.service
@@ -1491,7 +1491,7 @@ WantedBy=multi-user.target
 
 #### サービスディスカバリー設定
 
-- [ ] 内部サービス通信用設定ファイル作成
+- [x] 内部サービス通信用設定ファイル作成
 
 ```bash
 vim /var/www/winyx/backend/config/services.yaml
@@ -1541,7 +1541,7 @@ ServiceMesh:
 
 #### RPC通信実装
 
-- [ ] サービス間通信用HTTPクライアント作成
+- [x] サービス間通信用HTTPクライアント作成
 
 ```bash
 vim /var/www/winyx/backend/common/httpclient/client.go
@@ -1654,7 +1654,7 @@ func (c *ServiceClient) doRequest(ctx context.Context, method, path string, body
 
 #### Kong APIゲートウェイ設定（オプション）
 
-- [ ] Kong設定ファイル作成
+- [x] Kong設定ファイル作成
 
 ```bash
 vim /var/www/winyx/backend/gateway/kong.yaml
@@ -1750,7 +1750,7 @@ plugins:
 
 #### サービスメッシュ実装
 
-- [ ] サービス間認証ミドルウェア作成
+- [x] サービス間認証ミドルウェア作成
 
 ```bash
 vim /var/www/winyx/backend/common/middleware/service_auth.go
@@ -1831,7 +1831,7 @@ func generateServiceSignature(serviceName, timestamp, secret string) string {
 
 ### 10.5.5 デプロイ手順
 
-- [ ] UserService デプロイ
+- [x] UserService デプロイ
 
 ```bash
 # データベースマイグレーション
@@ -1855,7 +1855,7 @@ sudo systemctl start winyx-user-service
 sudo systemctl status winyx-user-service
 ```
 
-- [ ] フロントエンド ビルド＆デプロイ
+- [x] フロントエンド ビルド＆デプロイ
 
 ```bash
 # フロントエンド ビルド
@@ -1871,7 +1871,7 @@ sudo systemctl reload nginx
 
 ### 10.5.4 動作確認
 
-- [ ] API エンドポイント テスト
+- [x] API エンドポイント テスト
 
 ```bash
 # ユーザー登録テスト
@@ -1900,23 +1900,23 @@ curl -X POST http://api.winyx.jp/api/v1/users/login \
 ### 10.6.1 セキュリティ強化
 
 #### JWT セキュリティ
-- [ ] トークン有効期限の適切な設定（24時間）
-- [ ] リフレッシュトークン実装（拡張機能）
-- [ ] トークン検証ミドルウェアの強化
+- [x] トークン有効期限の適切な設定（24時間）
+- [x] リフレッシュトークン実装（拡張機能）
+- [x] トークン検証ミドルウェアの強化
 
 #### パスワードセキュリティ  
-- [ ] bcrypt ハッシュ化（cost=12推奨）
-- [ ] パスワード強度チェック
-- [ ] ブルートフォース攻撃対策
+- [x] bcrypt ハッシュ化（cost=12推奨）
+- [x] パスワード強度チェック
+- [x] ブルートフォース攻撃対策
 
 #### データベースセキュリティ
-- [ ] SQLインジェクション対策（Go-Zero ORM使用）
-- [ ] 機密データの暗号化
-- [ ] アクセスログ記録
+- [x] SQLインジェクション対策（Go-Zero ORM使用）
+- [x] 機密データの暗号化
+- [x] アクセスログ記録
 
 ### 10.6.2 監視とロギング
 
-- [ ] ユーザー行動ログ
+- [x] ユーザー行動ログ
 
 ```go
 // internal/logic/user/loginlogic.go に追加
@@ -1935,7 +1935,7 @@ func (l *LoginLogic) Login(req *types.LoginReq) (resp *types.LoginRes, err error
 }
 ```
 
-- [ ] 失敗試行の監視
+- [x] 失敗試行の監視
 
 ```go
 // ログイン失敗時
