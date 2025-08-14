@@ -191,8 +191,10 @@ sudo ufw default allow outgoing
 sudo ufw allow 22/tcp    # SSH（後でポート変更推奨）
 sudo ufw allow 80/tcp    # HTTP
 sudo ufw allow 443/tcp   # HTTPS
-sudo ufw allow 3306/tcp  # MySQL（内部接続のみ推奨）
 ```
+> **Note:** データベース(MySQL/MariaDB)がアプリケーションと同じサーバーで稼働している場合、外部にポート(3306)を公開する必要はありません。アプリケーションは内部ネットワーク(localhost)経由でデータベースに接続するため、ファイアウォールでポートを開放すると、不要なセキュリティリスクを生むことになります。
+> 別のサーバーからデータベースに接続する必要がある場合にのみ、特定のIPアドレスからのアクセスを許可するルールを追加してください。
+> (例: `sudo ufw allow from 192.168.1.100 to any port 3306`)
 - [ ] ファイアウォールの有効化
 ```bash
 sudo ufw enable
