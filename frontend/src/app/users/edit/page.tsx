@@ -65,10 +65,31 @@ function UserEditContent() {
     setError(null);
     
     try {
-      const response = await fetch(`http://127.0.0.1:8889/api/v1/admin/users/${userId}`, {
+      // まず管理者でログインしてトークンを取得
+      const loginResponse = await fetch(`/api/v1/users/login`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // 本来はJWTトークンが必要
+        },
+        body: JSON.stringify({
+          email: 'wingnakada@gmail.com',
+          password: 'Winyx&7377'
+        }),
+      });
+
+      if (!loginResponse.ok) {
+        const errorText = await loginResponse.text();
+        throw new Error(`ログインに失敗しました: ${loginResponse.status} - ${errorText}`);
+      }
+
+      const loginData = await loginResponse.json();
+      const token = loginData.token;
+
+      // 取得したトークンでユーザー情報を取得
+      const response = await fetch(`/api/v1/admin/users/${userId}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -150,12 +171,32 @@ function UserEditContent() {
     setSuccessMessage(null);
     
     try {
+      // まず管理者でログインしてトークンを取得
+      const loginResponse = await fetch(`/api/v1/users/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: 'wingnakada@gmail.com',
+          password: 'Winyx&7377'
+        }),
+      });
+
+      if (!loginResponse.ok) {
+        const errorText = await loginResponse.text();
+        throw new Error(`ログインに失敗しました: ${loginResponse.status} - ${errorText}`);
+      }
+
+      const loginData = await loginResponse.json();
+      const token = loginData.token;
+
       // ユーザー基本情報の更新
-      const userResponse = await fetch(`http://127.0.0.1:8889/api/v1/admin/users/${userId}`, {
+      const userResponse = await fetch(`/api/v1/admin/users/${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          // 本来はJWTトークンが必要
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           name: formData.name,
@@ -165,10 +206,11 @@ function UserEditContent() {
       });
 
       // プロフィール情報の更新
-      const profileResponse = await fetch(`http://127.0.0.1:8889/api/v1/admin/users/${userId}/profile`, {
+      const profileResponse = await fetch(`/api/v1/admin/users/${userId}/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(formData.profile),
       });
