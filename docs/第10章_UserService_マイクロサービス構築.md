@@ -1294,8 +1294,23 @@ export default function AdminUsersPage() {
 - [x] UserService用のUpstream追加
 
 ```bash
-vim /var/www/winyx/nginx_user_service_config.tmp
+# 設定ファイルを作成
+vim /var/www/winyx/nginx_user_service_config.conf
 ```
+
+**注意**: Nginx設定の実際の適用には管理者権限が必要です。以下の手順で適用してください：
+
+```bash
+# 自動適用スクリプトを実行（管理者権限が必要）
+sudo /var/www/winyx/scripts/apply_nginx_config.sh
+
+# または手動で適用
+sudo cp /var/www/winyx/nginx_user_service_config.conf /etc/nginx/sites-available/winyx
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+詳細な手順は `/var/www/winyx/docs/nginx_deployment_instructions.md` を参照してください。
 
 ```nginx
 # Winyx Nginx Configuration with UserService
