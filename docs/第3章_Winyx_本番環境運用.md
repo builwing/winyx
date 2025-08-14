@@ -39,8 +39,8 @@ server {
     # セキュリティヘッダー
     include /etc/nginx/snippets/security-headers.conf;
     
-    # フロントエンド静的ファイル
-    root /var/www/winyx/frontend;
+    # フロントエンド静的ファイル（Static Export）
+    root /var/www/winyx/frontend/out;
     index index.html;
     
     # gzip圧縮
@@ -673,7 +673,7 @@ cd /var/www/winyx/backend/test_api
 go mod tidy
 go build -o test_api testapi.go
 
-# フロントエンドのビルド（Next.jsの場合）
+# フロントエンドのビルド（Next.js Static Export）
 echo "Building frontend..."
 cd /var/www/winyx/frontend
 npm install
