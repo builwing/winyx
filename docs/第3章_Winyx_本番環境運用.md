@@ -36,6 +36,9 @@ server {
     listen 80;
     server_name winyx.jp www.winyx.jp;
     
+    # セキュリティヘッダー
+    include /etc/nginx/snippets/security-headers.conf;
+    
     # フロントエンド静的ファイル
     root /var/www/winyx/frontend;
     index index.html;
@@ -76,6 +79,9 @@ server {
 server {
     listen 80;
     server_name api.winyx.jp;
+    
+    # セキュリティヘッダー
+    include /etc/nginx/snippets/security-headers.conf;
     
     # APIリバースプロキシ（バックエンドへ転送）
     location / {
@@ -160,15 +166,11 @@ add_header Content-Security-Policy "default-src 'self' https:; script-src 'self'
 add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 ```
 
-- [ ] サイト設定にセキュリティヘッダーを含める：
-```nginx
-server {
-    # ... 既存の設定 ...
-    include /etc/nginx/snippets/security-headers.conf;
-}
-```
+- [x] サイト設定にセキュリティヘッダーを含める：
+Nginx設定ファイル `/etc/nginx/sites-available/winyx` 内の各 `server` ブロックに `include` ディレクティブが追加されました。
 
 ---
+
 
 ## 第2節 セキュリティ強化
 
