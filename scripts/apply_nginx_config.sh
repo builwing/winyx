@@ -9,8 +9,10 @@ echo ""
 
 # 設定ファイルのパス
 CONFIG_SOURCE="/var/www/winyx/nginx_user_service_config.conf"
+UPSTREAM_SOURCE="/var/www/winyx/nginx_upstream.conf"
 CONFIG_DEST="/etc/nginx/sites-available/winyx"
 CONFIG_LINK="/etc/nginx/sites-enabled/winyx"
+UPSTREAM_DEST="/etc/nginx/conf.d/winyx_upstream.conf"
 
 # 1. 設定ファイルの存在確認
 if [ ! -f "$CONFIG_SOURCE" ]; then
@@ -18,15 +20,14 @@ if [ ! -f "$CONFIG_SOURCE" ]; then
     exit 1
 fi
 
-echo "1. 設定ファイルの構文チェック..."
-if sudo nginx -t -c /dev/stdin < "$CONFIG_SOURCE" 2>/dev/null; then
-    echo "   ✓ 構文チェック成功"
-else
-    echo "   ✗ 構文エラーが検出されました"
-    echo "   以下のコマンドで詳細を確認してください:"
-    echo "   sudo nginx -t -c $CONFIG_SOURCE"
+if [ ! -f "$UPSTREAM_SOURCE" ]; then
+    echo "エラー: Upstream設定ファイルが見つかりません: $UPSTREAM_SOURCE"
     exit 1
 fi
+
+echo "1. Upstream設定をコピー..."
+sudo cp "$UPSTREAM_SOURCE" "$UPSTREAM_DEST"
+echo "   ✓ Upstream設定を $UPSTREAM_DEST にコピー完了"
 
 # 2. 既存設定のバックアップ
 if [ -f "$CONFIG_DEST" ]; then
@@ -37,10 +38,15 @@ else
     echo "2. 新規設定ファイルを作成します"
 fi
 
+if [ -f "$UPSTREAM_DEST" ]; then
+    UPSTREAM_BACKUP="${UPSTREAM_DEST}.backup.$(date +%Y%m%d_%H%M%S)"
+    sudo cp "$UPSTREAM_DEST" "$UPSTREAM_BACKUP"
+fi
+
 # 3. 設定ファイルをコピー
 echo "3. 設定ファイルを適用..."
 sudo cp "$CONFIG_SOURCE" "$CONFIG_DEST"
-echo "   ✓ $CONFIG_DEST にコピー完了"
+echo "   ✓ サーバー設定を $CONFIG_DEST にコピー完了"
 
 # 4. シンボリックリンクの作成/更新
 if [ -L "$CONFIG_LINK" ]; then
@@ -60,6 +66,9 @@ else
     if [ -n "$BACKUP_FILE" ]; then
         echo "   バックアップから復元します..."
         sudo cp "$BACKUP_FILE" "$CONFIG_DEST"
+        if [ -n "$UPSTREAM_BACKUP" ]; then
+            sudo cp "$UPSTREAM_BACKUP" "$UPSTREAM_DEST"
+        fi
     fi
     exit 1
 fi
