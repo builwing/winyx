@@ -1,0 +1,13 @@
+./bulkinserter.go
+./config.go
+./errors.go
+./metrics.go
+./mysql.go
+./orm.go
+./rwstrategy.go
+./sqlconn.go
+./sqlmanager.go
+./stmt.go
+./trace.go
+./tx.go
+./utils.go
