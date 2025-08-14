@@ -385,7 +385,7 @@ cd /var/www/winyx/backend/test_api
 
 ```bash
 cd /var/www/winyx/backend/test_api
-goctl-swagger -f test_api.api -o /var/www/winyx/docs/swagger.json
+goctl api swagger --api test_api.api --dir /var/www/winyx/docs --filename swagger
 ```
 
 > 目的：APIの仕様書を自動生成
@@ -394,14 +394,18 @@ goctl-swagger -f test_api.api -o /var/www/winyx/docs/swagger.json
 
 ```bash
 # Swagger UIファイルをダウンロード
+cd /var/www/winyx
 wget https://github.com/swagger-api/swagger-ui/archive/refs/tags/v4.15.5.tar.gz
 tar -xzf v4.15.5.tar.gz
-sudo cp -r swagger-ui-4.15.5/dist/* /var/www/winyx/docs/swagger-ui/
-sudo chown -R www-data:www-data /var/www/winyx/docs/swagger-ui/
+mkdir -p /var/www/winyx/docs/swagger-ui
+cp -r swagger-ui-4.15.5/dist/* /var/www/winyx/docs/swagger-ui/
 
 # swagger.jsonを参照するよう設定
-sudo sed -i 's|https://petstore.swagger.io/v2/swagger.json|/docs/swagger.json|g' \
+sed -i 's|https://petstore.swagger.io/v2/swagger.json|../swagger.json|g' \
   /var/www/winyx/docs/swagger-ui/swagger-initializer.js
+
+# 一時ファイルを削除
+rm -rf swagger-ui-4.15.5 v4.15.5.tar.gz
 ```
 
 > 目的：Swagger UIの配置とAPIドキュメントの表示準備
@@ -426,6 +430,24 @@ echo $! > /tmp/test_api.pid
 curl -s http://127.0.0.1:8888/from/you | jq .
 # 期待値：{"message": "Hello you"} のようなJSON
 ```
+
+#### 2.1.4.7 Swagger UIの確認
+
+- [x] API仕様書の確認
+
+```bash
+# Swagger JSONファイルの確認
+ls -la /var/www/winyx/docs/swagger.json
+cat /var/www/winyx/docs/swagger.json | jq .
+```
+
+- [x] Swagger UIアクセス確認
+
+Webブラウザで以下にアクセス：
+- **Swagger UI**: `http://your-domain/docs/swagger-ui/index.html`
+- **Swagger JSON**: `http://your-domain/docs/swagger.json`
+
+> 目的：生成されたAPI仕様書の確認とSwagger UIでのドキュメント表示
 
 > 目的：APIエンドポイントの動作確認
 
