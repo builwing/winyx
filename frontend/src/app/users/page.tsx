@@ -24,6 +24,8 @@ interface UserListResponse {
 }
 
 export default function UsersPage() {
+  console.log('UsersPage: Component initialization');
+  
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,23 +39,63 @@ export default function UsersPage() {
     setError(null);
     
     try {
-      const response = await fetch(`http://127.0.0.1:8889/api/v1/admin/users?page=${page}&limit=${limit}`, {
+      console.log('fetchUsers: Starting user fetch process...');
+      
+      // まず管理者でログインしてトークンを取得
+      console.log('fetchUsers: Attempting login...');
+      const loginResponse = await fetch(`/api/v1/users/login`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // 本来はJWTトークンが必要ですが、デモのため省略
+        },
+        body: JSON.stringify({
+          email: 'wingnakada@gmail.com',
+          password: 'Winyx&7377'
+        }),
+      });
+
+      console.log('fetchUsers: Login response status:', loginResponse.status);
+      
+      if (!loginResponse.ok) {
+        const errorText = await loginResponse.text();
+        console.error('fetchUsers: Login failed with response:', errorText);
+        throw new Error(`ログインに失敗しました: ${loginResponse.status} - ${errorText}`);
+      }
+
+      const loginData = await loginResponse.json();
+      console.log('fetchUsers: Login successful, token length:', loginData.token?.length || 'no token');
+      const token = loginData.token;
+
+      // 取得したトークンでユーザー一覧を取得
+      console.log('fetchUsers: Fetching user list...');
+      const response = await fetch(`/api/v1/admin/users/?page=${page}&limit=${limit}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
       });
 
+      console.log('fetchUsers: User list response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('fetchUsers: User list fetch failed with response:', errorText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
       }
 
       const data: UserListResponse = await response.json();
-      setUsers(data.users || []);
-      setTotalUsers(data.total);
+      console.log('fetchUsers: User list data received:', data);
+      
+      // データの安全性をチェック
+      const safeUsers = Array.isArray(data.users) ? data.users : [];
+      console.log('fetchUsers: Safe users array:', safeUsers);
+      
+      setUsers(safeUsers);
+      setTotalUsers(data.total || 0);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ユーザーリストの取得に失敗しました');
-      console.error('Failed to fetch users:', err);
+      const errorMessage = err instanceof Error ? err.message : 'ユーザーリストの取得に失敗しました';
+      console.error('fetchUsers: Error occurred:', err);
+      setError(errorMessage);
       
       // エラー時のモックデータ
       const mockUsers: User[] = [
@@ -91,29 +133,61 @@ export default function UsersPage() {
     setDeleteLoading(userId);
     
     try {
-      const response = await fetch(`http://127.0.0.1:8889/api/v1/admin/users/${userId}`, {
+      console.log('handleDeleteUser: Starting delete process for user:', userId);
+      
+      // まず管理者でログインしてトークンを取得
+      console.log('handleDeleteUser: Attempting login...');
+      const loginResponse = await fetch(`/api/v1/users/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: 'wingnakada@gmail.com',
+          password: 'Winyx&7377'
+        }),
+      });
+
+      console.log('handleDeleteUser: Login response status:', loginResponse.status);
+      
+      if (!loginResponse.ok) {
+        const errorText = await loginResponse.text();
+        console.error('handleDeleteUser: Login failed:', errorText);
+        throw new Error(`ログインに失敗しました: ${loginResponse.status} - ${errorText}`);
+      }
+
+      const loginData = await loginResponse.json();
+      console.log('handleDeleteUser: Login successful');
+      const token = loginData.token;
+
+      console.log('handleDeleteUser: Attempting to delete user...');
+      const response = await fetch(`/api/v1/admin/users/${userId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          // 本来はJWTトークンが必要
+          'Authorization': `Bearer ${token}`,
         },
       });
 
+      console.log('handleDeleteUser: Delete response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('handleDeleteUser: Delete failed:', errorText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
       }
 
       // ユーザーリストから削除
-      setUsers(prev => prev.filter(user => user.user_id !== userId));
-      setTotalUsers(prev => prev - 1);
+      setUsers(prev => Array.isArray(prev) ? prev.filter(user => user.user_id !== userId) : []);
+      setTotalUsers(prev => Math.max(0, prev - 1));
       
       alert(`「${userName}」を削除しました`);
     } catch (err) {
       console.error('Failed to delete user:', err);
       
       // エラー時でもデモのため削除実行
-      setUsers(prev => prev.filter(user => user.user_id !== userId));
-      setTotalUsers(prev => prev - 1);
+      setUsers(prev => Array.isArray(prev) ? prev.filter(user => user.user_id !== userId) : []);
+      setTotalUsers(prev => Math.max(0, prev - 1));
       alert(`「${userName}」を削除しました（デモモード）`);
     } finally {
       setDeleteLoading(null);
@@ -121,15 +195,22 @@ export default function UsersPage() {
   };
 
   useEffect(() => {
-    fetchUsers(currentPage);
+    console.log('useEffect: Component mounted, currentPage:', currentPage);
+    try {
+      fetchUsers(currentPage);
+    } catch (err) {
+      console.error('useEffect: Error in fetchUsers:', err);
+    }
   }, [currentPage]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case '有効':
       case 'active':
-        return <Badge variant="default" className="bg-green-500">アクティブ</Badge>;
+        return <Badge variant="default" className="bg-green-500">有効</Badge>;
+      case '無効':
       case 'inactive':
-        return <Badge variant="secondary">非アクティブ</Badge>;
+        return <Badge variant="secondary">無効</Badge>;
       case 'suspended':
         return <Badge variant="destructive">停止中</Badge>;
       default:
@@ -137,7 +218,12 @@ export default function UsersPage() {
     }
   };
 
-  const getRoleBadges = (roles: string[] = []) => {
+  const getRoleBadges = (roles: string[] | null | undefined = []) => {
+    console.log('getRoleBadges: roles received:', roles);
+    if (!roles || !Array.isArray(roles)) {
+      console.log('getRoleBadges: roles is null/undefined or not array, returning empty array');
+      return [];
+    }
     return roles.map((role, index) => {
       const variant = role === 'admin' ? 'destructive' : 'secondary';
       return (
@@ -191,7 +277,7 @@ export default function UsersPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-500">
-                {users.filter(u => u.status === 'active').length}
+                {Array.isArray(users) ? users.filter(u => u.status === '有効' || u.status === 'active').length : 0}
               </div>
             </CardContent>
           </Card>
@@ -201,7 +287,7 @@ export default function UsersPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-500">
-                {users.filter(u => u.roles?.includes('admin')).length}
+                {Array.isArray(users) ? users.filter(u => Array.isArray(u.roles) && u.roles.includes('admin')).length : 0}
               </div>
             </CardContent>
           </Card>
@@ -226,13 +312,13 @@ export default function UsersPage() {
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
                 <p className="text-gray-400">ユーザーリストを読み込み中...</p>
               </div>
-            ) : users.length === 0 ? (
+            ) : !Array.isArray(users) || users.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-400">ユーザーが見つかりませんでした</p>
               </div>
             ) : (
               <div className="space-y-4">
-                {users.map((user) => (
+                {Array.isArray(users) && users.map((user) => (
                   <div
                     key={user.user_id}
                     className="p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-300"

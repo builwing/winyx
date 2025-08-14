@@ -65,6 +65,22 @@ func (l *RegisterLogic) Register(req *types.RegisterReq) (resp *types.RegisterRe
 
     userId, _ := result.LastInsertId()
     
+    // 基本の'user'ロールを自動追加
+    userRole, err := l.svcCtx.RolesModel.FindByName(l.ctx, "user")
+    if err == nil && userRole != nil {
+        userRoleData := &model.UserRoles{
+            UserId:     userId,
+            RoleId:     userRole.Id,
+            AssignedBy: userId, // 自己割り当て
+            CreatedAt:  now,
+        }
+        _, err = l.svcCtx.UserRolesModel.Insert(l.ctx, userRoleData)
+        if err != nil {
+            logx.Errorf("ユーザーロール追加エラー: %v", err)
+            // エラーが発生してもユーザー作成は成功しているので続行
+        }
+    }
+    
     return &types.RegisterRes{
         UserId:  userId,
         Name:    user.Name,

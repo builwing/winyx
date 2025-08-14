@@ -50,6 +50,20 @@ func (l *LoginLogic) Login(req *types.LoginReq) (resp *types.LoginRes, err error
         return nil, fmt.Errorf("メールアドレスまたはパスワードが正しくありません")
     }
 
+    // ユーザーのロール情報を取得
+    userRoles, err := l.svcCtx.UserRolesModel.FindByUserIdWithRole(l.ctx, int64(user.Id))
+    if err != nil {
+        logx.Errorf("ユーザーロール取得エラー: %v", err)
+        // ロール情報の取得に失敗してもログインは継続（空配列として処理）
+        userRoles = []*model.UserRoleInfo{}
+    }
+
+    // ロール名のスライスを作成
+    var roles []string
+    for _, roleInfo := range userRoles {
+        roles = append(roles, roleInfo.RoleName)
+    }
+
     // JWT生成
     now := time.Now()
     accessExpire := now.Add(time.Hour * 24) // 24時間
@@ -61,6 +75,7 @@ func (l *LoginLogic) Login(req *types.LoginReq) (resp *types.LoginRes, err error
         "user_id": user.Id,
         "name": user.Name,
         "email": user.Email,
+        "roles": roles,
     })
 
     accessTokenString, err := accessToken.SignedString([]byte(l.svcCtx.Config.Auth.AccessSecret))

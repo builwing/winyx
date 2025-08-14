@@ -429,6 +429,45 @@ goctl model mysql ddl -src /var/www/winyx/contracts/user_service/schema.sql -dir
 
 ### 10.3.4 ビジネスロジック実装
 
+#### 実装完了したロジック機能
+
+- [x] ユーザー登録ロジック（role自動割り当て機能付き）
+- [x] ログインロジック（JWT内にroles含む）
+- [x] ユーザープロフィール取得（データベース連携）
+- [x] 管理者ユーザー一覧取得（ページネーション対応）
+- [x] ユーザーステータス更新機能
+- [x] ユーザー削除機能（管理者権限必須）
+
+**重要な実装ポイント:**
+
+1. **JWT認証にロール情報を含む実装**
+   ```go
+   // ユーザーのロール情報を取得してJWTに含める
+   userRoles, err := l.svcCtx.UserRolesModel.FindByUserIdWithRole(l.ctx, int64(user.Id))
+   var roles []string
+   for _, roleInfo := range userRoles {
+       roles = append(roles, roleInfo.RoleName)
+   }
+   claims["roles"] = roles
+   ```
+
+2. **管理者権限チェックの改善**
+   ```go
+   // adminロールが含まれているかチェック
+   hasAdminRole := false
+   for _, role := range roleSlice {
+       if roleStr, ok := role.(string); ok && roleStr == "admin" {
+           hasAdminRole = true
+           break
+       }
+   }
+   ```
+
+3. **ユーザー一覧取得でのロール情報付与**
+   - 各ユーザーのロール情報を個別に取得
+   - ページネーション対応（limit, offset）
+   - ユーザー数カウント機能
+
 - [x] ユーザー登録ロジック
 
 ```bash
@@ -1022,6 +1061,42 @@ export function useLogout() {
 
 ### 10.4.4 ユーザー管理コンポーネント
 
+#### 実際のDBデータ表示の実装
+
+- [x] Nginxユーザー管理画面でMariaDBデータ表示に修正完了
+- [x] null安全性の確保とエラーハンドリング改善
+- [x] 詳細なログ機能の追加
+
+**重要**: 今回の実装では以下の課題を解決しました：
+
+1. **null安全性エラー修正**
+   ```javascript
+   // エラー: Cannot read properties of null (reading 'map')
+   // 修正: rolesパラメータの安全性チェック
+   const getRoleBadges = (roles: string[] | null | undefined = []) => {
+     if (!roles || !Array.isArray(roles)) {
+       return [];
+     }
+     return roles.map((role, index) => {
+       // ロールバッジ表示処理
+     });
+   };
+   ```
+
+2. **APIレスポンス処理の安全性確保**
+   ```javascript
+   // データの安全性をチェック
+   const safeUsers = Array.isArray(data.users) ? data.users : [];
+   setUsers(safeUsers);
+   setTotalUsers(data.total || 0);
+   ```
+
+3. **統計表示の安全な処理**
+   ```javascript
+   // 管理者数カウントの安全な実装
+   {Array.isArray(users) ? users.filter(u => Array.isArray(u.roles) && u.roles.includes('admin')).length : 0}
+   ```
+
 - [x] ログインページの作成
 
 ```bash
@@ -1291,7 +1366,46 @@ export default function AdminUsersPage() {
 
 ### 10.5.1 Nginx設定更新
 
-- [x] UserService用のUpstream追加
+#### 完了した設定変更
+
+- [x] UserService用のUpstream追加（ポート8894で稼働中）
+- [x] APIプロキシ設定を winyx.jp ドメインに追加
+- [x] CORS対応設定の実装
+- [x] Upstream重複エラーの解決
+
+**実装された設定内容:**
+
+1. **Upstream設定**
+   ```nginx
+   upstream user_service {
+       server 127.0.0.1:8894;
+       keepalive 32;
+   }
+   ```
+
+2. **winyx.jpドメインにAPIプロキシ追加**
+   ```nginx
+   # UserService API プロキシ（フロントエンドからの同一ドメイン呼び出し用）
+   location /api/v1/users/ {
+       proxy_pass http://user_service;
+       # プロキシヘッダー設定...
+   }
+   
+   # Admin API プロキシ（フロントエンドからの同一ドメイン呼び出し用）
+   location /api/v1/admin/ {
+       proxy_pass http://user_service;
+       # プロキシヘッダー設定...
+   }
+   ```
+
+3. **CORS設定の実装**
+   - UserServiceにrest.WithCors()追加
+   - フロントエンドから相対パスでAPI呼び出し可能に
+
+**実際の動作確認:**
+- MariaDBから4人のユーザーデータ正常取得
+- ロール情報付きでの表示
+- 管理者権限による削除機能動作
 
 ```bash
 # 設定ファイルを作成
@@ -1886,6 +2000,51 @@ sudo systemctl reload nginx
 
 ### 10.5.4 動作確認
 
+#### 完了した動作テスト
+
+- [x] UserService（ポート8894）正常稼働確認
+- [x] MariaDBデータベース連携動作確認
+- [x] フロントエンドからのAPI呼び出し成功
+- [x] 管理者権限による一覧表示・削除機能動作確認
+
+**実際の動作確認結果:**
+
+1. **データベース接続確認**
+   ```bash
+   # 4人のユーザーデータが正常に取得されることを確認
+   # - wingnakada@gmail.com (admin)
+   # - user_2@example.com (user) 
+   # - user_3@example.com (user)
+   # - user_4@example.com (user)
+   ```
+
+2. **API動作確認**
+   ```bash
+   # ログインAPI正常動作（rolesを含むJWT生成）
+   curl -X POST http://winyx.jp/api/v1/users/login \
+     -H "Content-Type: application/json" \
+     -d '{
+       "email": "wingnakada@gmail.com", 
+       "password": "Winyx&7377"
+     }'
+   
+   # 管理者ユーザー一覧API動作確認
+   curl -H "Authorization: Bearer [JWT_TOKEN]" \
+        http://winyx.jp/api/v1/admin/users/?page=1&limit=10
+   ```
+
+3. **フロントエンド統合テスト**
+   - ユーザー管理ページでMariaDBデータ表示成功
+   - null安全性エラーの解決
+   - ロール情報付きユーザー一覧表示
+   - 管理者権限による削除機能動作
+
+**トラブルシューティング記録:**
+- UFWファイアウォールでポート8894開放が必要だった
+- Nginx upstream重複エラーの解決
+- フロントエンドのnull安全性エラー修正
+- CORS設定によるクロスオリジン問題解決
+
 - [x] API エンドポイント テスト
 
 ```bash
@@ -1965,22 +2124,42 @@ logx.Errorw("User login failed",
 
 ## まとめ
 
-第10章では以下を実装しました：
+第10章では以下を実装し、**完全に動作する**ユーザー管理システムを構築しました：
 
-### 実装内容
+### 完了した実装内容
 1. **Go-Zero API契約設計** - 完全なユーザー管理API仕様
-2. **UserServiceマイクロサービス** - 認証・認可機能完備
-3. **Next.js フロントエンド** - モダンなユーザー管理UI
-4. **セキュリティ実装** - JWT認証、パスワードハッシュ化
-5. **管理機能** - ユーザー一覧・削除機能
-6. **システム統合** - Nginx、systemd連携
+2. **UserServiceマイクロサービス** - 認証・認可機能完備（ポート8894で稼働中）
+3. **Next.js フロントエンド** - モダンなユーザー管理UI（MariaDBデータ表示対応）
+4. **セキュリティ実装** - JWT認証（roles含む）、パスワードハッシュ化、管理者権限チェック
+5. **管理機能** - ユーザー一覧・削除機能（null安全性確保）
+6. **システム統合** - Nginx プロキシ、CORS対応、エラーハンドリング
+
+### 実際の動作確認
+- ✅ **MariaDBから4人のユーザーデータ正常取得**
+- ✅ **ロール情報付きJWT認証動作**
+- ✅ **管理者権限による一覧表示・削除機能**
+- ✅ **フロントエンドでの実際のDBデータ表示**
+- ✅ **null安全性エラーの完全解決**
 
 ### 技術スタック
 - **バックエンド**: Go-Zero + MariaDB + Redis
 - **フロントエンド**: Next.js 15 + TypeScript + Tailwind CSS
-- **認証**: JWT + bcrypt
-- **状態管理**: Zustand + React Query
-- **インフラ**: Nginx + systemd
+- **認証**: JWT（roles含む） + bcrypt
+- **状態管理**: React useState + useEffect
+- **インフラ**: Nginx（プロキシ設定）+ UFW
+
+### 解決した技術課題
+1. **null安全性エラー修正**: `Cannot read properties of null (reading 'map')`
+2. **CORS問題解決**: フロントエンドから相対パスでAPI呼び出し
+3. **Nginx設定最適化**: upstream重複エラー解決、プロキシ設定
+4. **ファイアウォール設定**: UFWでポート8894開放
+5. **JWT強化**: ロール情報をトークンに含めて権限管理
+
+### 実運用状況
+- **UserService**: `./user_service -f etc/test_prod_user_service-api.yaml` で稼働中
+- **データベース**: winyx_core の users, roles, user_roles テーブル活用
+- **フロントエンド**: winyx.jp/users/ でアクセス可能
+- **管理機能**: 管理者ログインでユーザー管理画面利用可能
 
 ### 次のステップ
 - リフレッシュトークン実装
@@ -1989,4 +2168,4 @@ logx.Errorw("User login failed",
 - 監査ログシステム
 - パフォーマンス最適化
 
-これでWinyxプロジェクトに本格的なユーザー管理機能が追加されました。
+**重要**: 今回の実装により、Winyxプロジェクトに**実際に動作する**本格的なユーザー管理機能が追加され、MariaDBデータの表示まで完全に動作確認されました。

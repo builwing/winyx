@@ -73,9 +73,33 @@ func (m *AdminAuthMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
             return
         }
 
-        // 管理者権限の確認（簡単な例：user_id 1を管理者とする）
-        if uid, ok := userID.(float64); !ok || uid != 1 {
-            logx.Errorf("管理者権限不足 user_id: %v", userID)
+        // 管理者権限の確認（rolesにadminが含まれているかチェック）
+        roles, rolesExists := claims["roles"]
+        if !rolesExists {
+            logx.Errorf("ロール情報不在 user_id: %v", userID)
+            http.Error(w, "管理者権限が必要です", http.StatusForbidden)
+            return
+        }
+
+        // rolesをスライスとして解析
+        roleSlice, ok := roles.([]interface{})
+        if !ok {
+            logx.Errorf("ロール形式エラー user_id: %v", userID)
+            http.Error(w, "管理者権限が必要です", http.StatusForbidden)
+            return
+        }
+
+        // adminロールが含まれているかチェック
+        hasAdminRole := false
+        for _, role := range roleSlice {
+            if roleStr, ok := role.(string); ok && roleStr == "admin" {
+                hasAdminRole = true
+                break
+            }
+        }
+
+        if !hasAdminRole {
+            logx.Errorf("管理者権限不足 user_id: %v, roles: %v", userID, roles)
             http.Error(w, "管理者権限が必要です", http.StatusForbidden)
             return
         }

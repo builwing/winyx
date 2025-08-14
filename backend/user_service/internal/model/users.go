@@ -18,6 +18,9 @@ type (
     // and implement the added methods in customUsersModel.
     UsersModel interface {
         usersModel
+        FindAll(ctx context.Context, limit, offset int) ([]*Users, error)
+        Count(ctx context.Context) (int64, error)
+        FindByStatus(ctx context.Context, status int8, limit, offset int) ([]*Users, error)
     }
 
     Users struct {
@@ -25,7 +28,7 @@ type (
         Name      string    `db:"name"`      // ユーザー名
         Email     string    `db:"email"`     // メールアドレス
         Password  string    `db:"password"`  // ハッシュ化されたパスワード
-        Status    int64     `db:"status"`    // ステータス: 0=無効, 1=有効
+        Status    int8      `db:"status"`    // ステータス: 0=無効, 1=有効
         CreatedAt time.Time `db:"created_at"` // 作成日時
         UpdatedAt time.Time `db:"updated_at"` // 更新日時
     }
@@ -141,6 +144,38 @@ func (m *defaultUsersModel) formatPrimary(primary any) string {
 func (m *defaultUsersModel) queryPrimary(ctx context.Context, conn sqlx.SqlConn, v, primary any) error {
     query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", usersRows, m.table)
     return conn.QueryRowCtx(ctx, v, query, primary)
+}
+
+// Custom methods for user management
+func (m *customUsersModel) FindAll(ctx context.Context, limit, offset int) ([]*Users, error) {
+    var resp []*Users
+    query := fmt.Sprintf("select %s from %s order by id desc limit ? offset ?", usersRows, m.table)
+    err := m.QueryRowsNoCacheCtx(ctx, &resp, query, limit, offset)
+    switch err {
+    case nil:
+        return resp, nil
+    default:
+        return nil, err
+    }
+}
+
+func (m *customUsersModel) Count(ctx context.Context) (int64, error) {
+    var count int64
+    query := fmt.Sprintf("select count(*) from %s", m.table)
+    err := m.QueryRowNoCacheCtx(ctx, &count, query)
+    return count, err
+}
+
+func (m *customUsersModel) FindByStatus(ctx context.Context, status int8, limit, offset int) ([]*Users, error) {
+    var resp []*Users
+    query := fmt.Sprintf("select %s from %s where `status` = ? order by id desc limit ? offset ?", usersRows, m.table)
+    err := m.QueryRowsNoCacheCtx(ctx, &resp, query, status, limit, offset)
+    switch err {
+    case nil:
+        return resp, nil
+    default:
+        return nil, err
+    }
 }
 
 var (

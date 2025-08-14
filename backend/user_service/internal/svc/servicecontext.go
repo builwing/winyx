@@ -10,17 +10,21 @@ import (
 )
 
 type ServiceContext struct {
-    Config     config.Config
-    UsersModel model.UsersModel
-    AdminAuth  rest.Middleware
+    Config         config.Config
+    UsersModel     model.UsersModel
+    RolesModel     model.RolesModel
+    UserRolesModel model.UserRolesModel
+    AdminAuth      rest.Middleware
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
     conn := sqlx.NewMysql(c.Mysql.DataSource)
     
     return &ServiceContext{
-        Config:     c,
-        UsersModel: model.NewUsersModel(conn, c.CacheConf),
-        AdminAuth:  middleware.NewAdminAuthMiddleware(c.Auth.AccessSecret).Handle,
+        Config:         c,
+        UsersModel:     model.NewUsersModel(conn, c.CacheConf),
+        RolesModel:     model.NewRolesModel(conn, c.CacheConf),
+        UserRolesModel: model.NewUserRolesModel(conn, c.CacheConf),
+        AdminAuth:      middleware.NewAdminAuthMiddleware(c.Auth.AccessSecret).Handle,
     }
 }
