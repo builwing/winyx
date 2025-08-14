@@ -1,0 +1,101 @@
+// このファイルは自動生成されます。手動で編集しないでください。
+// Generated at: 2025-08-14T08:57:26.078Z
+
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from './index';
+
+/**
+ * register endpoint
+ */
+export function useRegister() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: () => api.register(),
+    onSuccess: () => {
+      // 関連するクエリを無効化
+      queryClient.invalidateQueries({ queryKey: ['register'] });
+    },
+  });
+}
+
+/**
+ * login endpoint
+ */
+export function useLogin() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: () => api.default.login(),
+    onSuccess: () => {
+      // 関連するクエリを無効化
+      queryClient.invalidateQueries({ queryKey: ['login'] });
+    },
+  });
+}
+
+/**
+ * userInfo endpoint
+ */
+export function useUserInfo() {
+  return useQuery({
+    queryKey: ['userInfo'],
+    queryFn: () => api.protected.userInfo(),
+  });
+}
+
+/**
+ * updateProfile endpoint
+ */
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: () => api.protected.updateProfile(),
+    onSuccess: () => {
+      // 関連するクエリを無効化
+      queryClient.invalidateQueries({ queryKey: ['updateProfile'] });
+    },
+  });
+}
+
+/**
+ * systemHealth endpoint
+ */
+export function useSystemHealth() {
+  return useQuery({
+    queryKey: ['systemHealth'],
+    queryFn: () => api.default.systemHealth(),
+  });
+}
+
+/**
+ * apiStats endpoint
+ */
+export function useApiStats() {
+  return useQuery({
+    queryKey: ['apiStats'],
+    queryFn: () => api.default.apiStats(),
+  });
+}
+
+/**
+ * realtimeMetrics endpoint
+ */
+export function useRealtimeMetrics() {
+  return useQuery({
+    queryKey: ['realtimeMetrics'],
+    queryFn: () => api.default.realtimeMetrics(),
+  });
+}
+
+/**
+ * configInfo endpoint
+ */
+export function useConfigInfo() {
+  return useQuery({
+    queryKey: ['configInfo'],
+    queryFn: () => api.default.configInfo(),
+  });
+}
+

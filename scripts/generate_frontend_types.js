@@ -12,6 +12,7 @@ const path = require('path');
 const CONFIG = {
   apiFiles: [
     path.join(__dirname, '../backend/test_api/test_api.api'),
+    path.join(__dirname, '../backend/dashboard_gateway/dashboard_gateway.api'),
     // 他のAPIファイルがあればここに追加
   ],
   outputDir: path.join(__dirname, '../frontend/src/types/generated'),
