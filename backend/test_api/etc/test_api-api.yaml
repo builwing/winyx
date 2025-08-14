@@ -3,7 +3,7 @@ Host: 0.0.0.0
 Port: 8888
 
 Mysql:
-  DataSource: "winyx_app:Winyx$7377@tcp(127.0.0.1:3306)/winyx_core?charset=utf8mb4&parseTime=true&loc=Asia%2FTokyo"
+  DataSource: "hide:Kura@0727@tcp(127.0.0.1:3306)/winyx_core?charset=utf8mb4&parseTime=true&loc=Asia%2FTokyo"
 
 Cache:
   - Host: 127.0.0.1:6379
