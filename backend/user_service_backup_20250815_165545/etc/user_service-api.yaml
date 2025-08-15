@@ -1,0 +1,17 @@
+Name: user_service
+Host: 0.0.0.0
+Port: 8888
+
+# JWT設定
+Auth:
+  AccessSecret: "CHANGE_ME_SUPER_SECRET_256BIT"
+  AccessExpire: 86400
+
+# データベース設定
+Mysql:
+  DataSource: "winyx:Winyx&7377@tcp(127.0.0.1:3306)/winyx_core?charset=utf8mb4&parseTime=true&loc=Asia%2FTokyo"
+
+# Redis設定（キャッシュ用）
+CacheConf:
+  - Host: 127.0.0.1:6379
+    Pass: ""
