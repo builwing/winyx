@@ -1,8 +1,11 @@
 'use client';
 
 import Image from 'next/image';
+import { useState } from 'react';
 
 export default function Home() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Background Animation */}
@@ -25,13 +28,53 @@ export default function Home() {
               priority
             />
           </div>
-          <div className="hidden md:flex space-x-6 text-gray-300">
+          
+          {/* Desktop Menu */}
+          <div className="hidden md:flex space-x-6 text-gray-300 items-center">
             <a href="#features" className="hover:text-purple-400 transition-colors">機能</a>
             <a href="#about" className="hover:text-purple-400 transition-colors">概要</a>
             <a href="/dashboard" className="hover:text-purple-400 transition-colors">ダッシュボード</a>
             <a href="/users" className="hover:text-purple-400 transition-colors">ユーザー管理</a>
+            <a 
+              href="/login" 
+              className="ml-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-300 font-medium"
+            >
+              ログイン
+            </a>
           </div>
+          
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="md:hidden text-gray-300 hover:text-purple-400 transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {isMobileMenuOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
         </div>
+        
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden mt-4 pb-4 border-t border-white/10">
+            <div className="flex flex-col space-y-3 pt-4">
+              <a href="#features" className="text-gray-300 hover:text-purple-400 transition-colors">機能</a>
+              <a href="#about" className="text-gray-300 hover:text-purple-400 transition-colors">概要</a>
+              <a href="/dashboard" className="text-gray-300 hover:text-purple-400 transition-colors">ダッシュボード</a>
+              <a href="/users" className="text-gray-300 hover:text-purple-400 transition-colors">ユーザー管理</a>
+              <a 
+                href="/login" 
+                className="mt-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-300 font-medium text-center"
+              >
+                ログイン
+              </a>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}
