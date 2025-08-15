@@ -3,7 +3,7 @@ package logic
 import (
 	"context"
 	"database/sql"
-	"time"
+	"errors"
 
 	"github.com/winyx/backend/test_api/internal/model"
 	"github.com/winyx/backend/test_api/internal/svc"

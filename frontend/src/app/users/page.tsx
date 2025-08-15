@@ -63,8 +63,8 @@ export default function UsersPage() {
       }
 
       const loginData = await loginResponse.json();
-      console.log('fetchUsers: Login successful, token length:', loginData.token?.length || 'no token');
-      const token = loginData.token;
+      console.log('fetchUsers: Login successful, token length:', loginData.access_token?.length || 'no token');
+      const token = loginData.access_token;
 
       // 取得したトークンでユーザー一覧を取得
       console.log('fetchUsers: Fetching user list...');

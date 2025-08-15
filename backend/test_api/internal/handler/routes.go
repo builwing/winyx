@@ -17,12 +17,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		[]rest.Route{
 			{
 				Method:  http.MethodPost,
-				Path:    "/api/login",
+				Path:    "/api/v1/users/login",
 				Handler: loginHandler(serverCtx),
 			},
 			{
 				Method:  http.MethodPost,
-				Path:    "/api/register",
+				Path:    "/api/v1/users/register",
 				Handler: registerHandler(serverCtx),
 			},
 		},
@@ -39,6 +39,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodPost,
 				Path:    "/user/profile",
 				Handler: protected.UpdateProfileHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/v1/admin/users/",
+				Handler: protected.UserListHandler(serverCtx),
 			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),

@@ -2,14 +2,19 @@ package svc
 
 import (
 	"github.com/winyx/backend/test_api/internal/config"
+	"github.com/winyx/backend/test_api/internal/model"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
 type ServiceContext struct {
-	Config config.Config
+	Config     config.Config
+	UsersModel model.UsersModel
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
+	conn := sqlx.NewMysql(c.Mysql.DataSource)
 	return &ServiceContext{
-		Config: c,
+		Config:     c,
+		UsersModel: model.NewUsersModel(conn, c.Cache),
 	}
 }

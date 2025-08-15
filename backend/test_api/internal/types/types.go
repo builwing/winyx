@@ -3,6 +3,14 @@
 
 package types
 
+type Request struct {
+	Name string `path:"name,optional,default=you"`
+}
+
+type Response struct {
+	Message string `json:"message"`
+}
+
 type LoginReq struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -29,4 +37,25 @@ type UserInfoRes struct {
 	Id    int64  `json:"id"`
 	Name  string `json:"name"`
 	Email string `json:"email"`
+}
+
+type UserListReq struct {
+	Page  int64 `form:"page,optional,default=1"`
+	Limit int64 `form:"limit,optional,default=10"`
+}
+
+type UserListRes struct {
+	Users []UserInfo `json:"users"`
+	Total int64      `json:"total"`
+	Page  int64      `json:"page"`
+	Limit int64      `json:"limit"`
+}
+
+type UserInfo struct {
+	UserId    int64  `json:"user_id"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	Status    string `json:"status"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }

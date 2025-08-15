@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/winyx/backend/test_api/internal/svc"
