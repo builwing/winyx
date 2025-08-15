@@ -81,25 +81,33 @@ func (l *UserUpdateLogic) UserUpdate(req *types.UserUpdateReq) (resp *types.User
 		logx.Infof("Updating profile for user %d: %+v", req.UserId, req.Profile)
 		
 		// Prepare social_links as valid JSON
-		socialLinksJSON := req.Profile.SocialLinks
-		if socialLinksJSON != "" && socialLinksJSON != "null" {
-			// If it's not already JSON, wrap it as a simple string value
-			if !isValidJSON(socialLinksJSON) {
-				socialLinksJSON = fmt.Sprintf(`"%s"`, socialLinksJSON)
-			}
-		} else {
+		var socialLinksJSON string
+		if req.Profile.SocialLinks == "" {
+			// 空文字の場合はnullを設定（JSON制約を満たすため）
 			socialLinksJSON = "null"
+		} else if isValidJSON(req.Profile.SocialLinks) {
+			// 既にJSONの場合はそのまま使用
+			socialLinksJSON = req.Profile.SocialLinks
+		} else {
+			// 文字列をJSON文字列として扱う
+			socialLinksJSON = fmt.Sprintf(`"%s"`, req.Profile.SocialLinks)
 		}
+		logx.Infof("Social links JSON prepared: '%s'", socialLinksJSON)
 		
-		// Check if profile exists
-		var profileExists bool
-		checkProfileQuery := `SELECT COUNT(*) > 0 FROM user_profiles WHERE user_id = ?`
-		err = l.svcCtx.DB.QueryRowPartial(&profileExists, checkProfileQuery, req.UserId)
+		// Check if profile exists using COUNT query
+		var profileCount int
+		checkProfileQuery := `SELECT COUNT(*) FROM user_profiles WHERE user_id = ?`
+		err = l.svcCtx.DB.QueryRowPartial(&profileCount, checkProfileQuery, req.UserId)
+		profileExists := profileCount > 0
+		
+		logx.Infof("Profile existence check for user %d: count=%d, exists=%v, error=%v", 
+			req.UserId, profileCount, profileExists, err)
+		
 		if err != nil {
 			logx.Errorf("Failed to check profile existence: %v", err)
+			// エラーの場合はINSERTを試行（重複エラーになるがログでわかる）
+			profileExists = false
 		}
-		
-		logx.Infof("Profile exists for user %d: %v", req.UserId, profileExists)
 		
 		if profileExists {
 			// Update existing profile
