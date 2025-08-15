@@ -1,7 +1,0 @@
-./assignrolehandler.go
-./deleteuserhandler.go
-./getuserbyidhandler.go
-./listroleshandler.go
-./listusershandler.go
-./removerolehandler.go
-./updateuserstatushandler.go
