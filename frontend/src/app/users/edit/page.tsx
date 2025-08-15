@@ -102,6 +102,14 @@ function UserEditContent() {
       setUser(userData);
       
       // フォームデータを初期化
+      console.log('受信したユーザーデータ:', userData);
+      
+      // birth_dateがタイムスタンプ形式の場合はYYYY-MM-DD形式に変換
+      let birthDate = userData.profile?.birth_date || '';
+      if (birthDate && birthDate.includes('T')) {
+        birthDate = birthDate.split('T')[0];
+      }
+      
       setFormData({
         name: userData.name || '',
         email: userData.email || '',
@@ -111,7 +119,24 @@ function UserEditContent() {
           bio: userData.profile?.bio || '',
           phone: userData.profile?.phone || '',
           address: userData.profile?.address || '',
-          birth_date: userData.profile?.birth_date || '',
+          birth_date: birthDate,
+          gender: userData.profile?.gender || '',
+          occupation: userData.profile?.occupation || '',
+          website: userData.profile?.website || '',
+          social_links: userData.profile?.social_links || '',
+        }
+      });
+      
+      console.log('設定したフォームデータ:', {
+        name: userData.name || '',
+        email: userData.email || '',
+        status: userData.status || 'active',
+        roles: userData.roles || ['user'],
+        profile: {
+          bio: userData.profile?.bio || '',
+          phone: userData.profile?.phone || '',
+          address: userData.profile?.address || '',
+          birth_date: birthDate,
           gender: userData.profile?.gender || '',
           occupation: userData.profile?.occupation || '',
           website: userData.profile?.website || '',
@@ -193,20 +218,26 @@ function UserEditContent() {
       const token = loginData.access_token;
 
       // ユーザー情報の更新 (新しいAPIエンドポイント)
+      const requestData = {
+        name: formData.name,
+        email: formData.email,
+        status: formData.status,
+        roles: formData.roles,
+        profile: formData.profile,
+      };
+      
+      console.log('送信データ:', requestData);
+      
       const response = await fetch(`/api/v1/admin/users/${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          status: formData.status,
-          roles: formData.roles,
-          profile: formData.profile,
-        }),
+        body: JSON.stringify(requestData),
       });
+      
+      console.log('レスポンス:', response.status, response.statusText);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -214,11 +245,20 @@ function UserEditContent() {
       }
 
       const result = await response.json();
+      console.log('レスポンスデータ:', result);
+      
       setSuccessMessage(result.message || 'ユーザー情報を正常に更新しました');
       
       // 更新後のユーザー情報をフォームに再セット
       const updatedUser = result.user;
       setUser(updatedUser);
+      
+      // birth_dateがタイムスタンプ形式の場合はYYYY-MM-DD形式に変換
+      let updatedBirthDate = updatedUser.profile?.birth_date || '';
+      if (updatedBirthDate && updatedBirthDate.includes('T')) {
+        updatedBirthDate = updatedBirthDate.split('T')[0];
+      }
+      
       setFormData({
         name: updatedUser.name || '',
         email: updatedUser.email || '',
@@ -228,7 +268,7 @@ function UserEditContent() {
           bio: updatedUser.profile?.bio || '',
           phone: updatedUser.profile?.phone || '',
           address: updatedUser.profile?.address || '',
-          birth_date: updatedUser.profile?.birth_date || '',
+          birth_date: updatedBirthDate,
           gender: updatedUser.profile?.gender || '',
           occupation: updatedUser.profile?.occupation || '',
           website: updatedUser.profile?.website || '',

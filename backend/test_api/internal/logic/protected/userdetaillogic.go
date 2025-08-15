@@ -47,6 +47,36 @@ func (l *UserDetailLogic) UserDetail(req *types.UserDetailReq) (resp *types.User
 		roles = []string{"user"}
 	}
 	
+	// Get user profile
+	var profile *types.UserProfileData
+	profileQuery := `SELECT bio, phone, address, birth_date, gender, occupation, website, social_links 
+	                 FROM user_profiles WHERE user_id = ?`
+	
+	var profileData struct {
+		Bio         string `db:"bio"`
+		Phone       string `db:"phone"`
+		Address     string `db:"address"`
+		BirthDate   string `db:"birth_date"`
+		Gender      string `db:"gender"`
+		Occupation  string `db:"occupation"`
+		Website     string `db:"website"`
+		SocialLinks string `db:"social_links"`
+	}
+	
+	err = l.svcCtx.DB.QueryRowPartial(&profileData, profileQuery, req.UserId)
+	if err == nil {
+		profile = &types.UserProfileData{
+			Bio:         profileData.Bio,
+			Phone:       profileData.Phone,
+			Address:     profileData.Address,
+			BirthDate:   profileData.BirthDate,
+			Gender:      profileData.Gender,
+			Occupation:  profileData.Occupation,
+			Website:     profileData.Website,
+			SocialLinks: profileData.SocialLinks,
+		}
+	}
+	
 	// Convert to response format
 	userInfo := types.UserInfo{
 		UserId:    int64(user.Id),
@@ -54,6 +84,7 @@ func (l *UserDetailLogic) UserDetail(req *types.UserDetailReq) (resp *types.User
 		Email:     user.Email,
 		Status:    fmt.Sprintf("%d", user.Status),
 		Roles:     roles,
+		Profile:   profile,
 		CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
 		UpdatedAt: user.UpdatedAt.Format("2006-01-02 15:04:05"),
 	}

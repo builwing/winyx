@@ -52,13 +52,14 @@ type UserListRes struct {
 }
 
 type UserInfo struct {
-	UserId    int64    `json:"user_id"`
-	Name      string   `json:"name"`
-	Email     string   `json:"email"`
-	Status    string   `json:"status"`
-	Roles     []string `json:"roles,omitempty"`
-	CreatedAt string   `json:"created_at"`
-	UpdatedAt string   `json:"updated_at"`
+	UserId    int64             `json:"user_id"`
+	Name      string            `json:"name"`
+	Email     string            `json:"email"`
+	Status    string            `json:"status"`
+	Roles     []string          `json:"roles,omitempty"`
+	Profile   *UserProfileData  `json:"profile,omitempty"`
+	CreatedAt string            `json:"created_at"`
+	UpdatedAt string            `json:"updated_at"`
 }
 
 type UserDetailReq struct {
@@ -70,12 +71,46 @@ type UserDetailRes struct {
 }
 
 type UserUpdateReq struct {
-	UserId int64  `path:"id"`
-	Name   string `json:"name"`
-	Email  string `json:"email"`
-	Status string `json:"status,optional"`
+	UserId  int64             `path:"id"`
+	Name    string            `json:"name"`
+	Email   string            `json:"email"`
+	Status  string            `json:"status,optional"`
+	Roles   []string          `json:"roles,optional"`
+	Profile *UserProfileData  `json:"profile,optional"`
+}
+
+type UserProfileData struct {
+	Bio         string `json:"bio,optional"`
+	Phone       string `json:"phone,optional"`
+	Address     string `json:"address,optional"`
+	BirthDate   string `json:"birth_date,optional"`
+	Gender      string `json:"gender,optional"`
+	Occupation  string `json:"occupation,optional"`
+	Website     string `json:"website,optional"`
+	SocialLinks string `json:"social_links,optional"`
 }
 
 type UserUpdateRes struct {
 	User UserInfo `json:"user"`
+}
+
+type UserCreateReq struct {
+	Name     string            `json:"name"`
+	Email    string            `json:"email"`
+	Password string            `json:"password"`
+	Status   string            `json:"status,optional"`
+	Roles    []string          `json:"roles,optional"`
+	Profile  *UserProfileData  `json:"profile,optional"`
+}
+
+type UserCreateRes struct {
+	User UserInfo `json:"user"`
+}
+
+type UserDeleteReq struct {
+	UserId int64 `path:"id"`
+}
+
+type UserDeleteRes struct {
+	Message string `json:"message"`
 }

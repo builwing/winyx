@@ -91,7 +91,7 @@ export default function NewUserPage() {
       }
 
       const loginData = await loginResponse.json();
-      const token = loginData.token;
+      const token = loginData.access_token;
 
       // 管理者用ユーザー作成APIを呼び出し
       const response = await fetch('/api/v1/admin/users/', {

@@ -158,7 +158,7 @@ export default function UsersPage() {
 
       const loginData = await loginResponse.json();
       console.log('handleDeleteUser: Login successful');
-      const token = loginData.token;
+      const token = loginData.access_token;
 
       console.log('handleDeleteUser: Attempting to delete user...');
       const response = await fetch(`/api/v1/admin/users/${userId}`, {
