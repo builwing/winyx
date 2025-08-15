@@ -204,15 +204,13 @@ export default function UsersPage() {
   }, [currentPage]);
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case '有効':
-      case 'active':
-        return <Badge variant="default" className="bg-green-500">有効</Badge>;
-      case '無効':
-      case 'inactive':
-        return <Badge variant="secondary">無効</Badge>;
-      case 'suspended':
-        return <Badge variant="destructive">停止中</Badge>;
+    // ステータスを数値として解釈し、2値システムで表示
+    const numStatus = status === '1' || status === 'active' || status === '有効' ? 1 : 0;
+    switch (numStatus) {
+      case 1:
+        return <Badge variant="default" className="bg-green-500 text-white">有効</Badge>;
+      case 0:
+        return <Badge variant="destructive" className="bg-red-500 text-white">無効</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }

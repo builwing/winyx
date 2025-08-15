@@ -38,11 +38,16 @@ func (l *UserUpdateLogic) UserUpdate(req *types.UserUpdateReq) (resp *types.User
 	existingUser.Name = req.Name
 	existingUser.Email = req.Email
 	
-	// Parse status if provided
+	// Parse status if provided (including "0" for inactive)
 	if req.Status != "" {
 		if status, err := strconv.Atoi(req.Status); err == nil {
+			logx.Infof("Updating status for user %d from %d to %d", req.UserId, existingUser.Status, status)
 			existingUser.Status = int8(status)
+		} else {
+			logx.Errorf("Invalid status format for user %d: %s", req.UserId, req.Status)
 		}
+	} else {
+		logx.Infof("No status provided for user %d, keeping current status: %d", req.UserId, existingUser.Status)
 	}
 	
 	// Update in database

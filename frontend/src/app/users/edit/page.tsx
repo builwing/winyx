@@ -44,7 +44,7 @@ function UserEditContent() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    status: 'active',
+    status: '1',
     roles: [] as string[],
     profile: {
       bio: '',
@@ -113,7 +113,7 @@ function UserEditContent() {
       setFormData({
         name: userData.name || '',
         email: userData.email || '',
-        status: userData.status || 'active',
+        status: userData.status || '1',
         roles: userData.roles || ['user'],
         profile: {
           bio: userData.profile?.bio || '',
@@ -130,7 +130,7 @@ function UserEditContent() {
       console.log('設定したフォームデータ:', {
         name: userData.name || '',
         email: userData.email || '',
-        status: userData.status || 'active',
+        status: userData.status || '1',
         roles: userData.roles || ['user'],
         profile: {
           bio: userData.profile?.bio || '',
@@ -152,7 +152,7 @@ function UserEditContent() {
         user_id: userId,
         name: 'Test User',
         email: 'test@example.com',
-        status: 'active',
+        status: '1',
         roles: ['user'],
         profile: {
           bio: 'テストユーザーです',
@@ -262,7 +262,7 @@ function UserEditContent() {
       setFormData({
         name: updatedUser.name || '',
         email: updatedUser.email || '',
-        status: updatedUser.status || 'active',
+        status: updatedUser.status || '1',
         roles: updatedUser.roles || ['user'],
         profile: {
           bio: updatedUser.profile?.bio || '',
@@ -318,13 +318,13 @@ function UserEditContent() {
   }, [userId]);
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <Badge variant="default" className="bg-green-500">アクティブ</Badge>;
-      case 'inactive':
-        return <Badge variant="secondary">非アクティブ</Badge>;
-      case 'suspended':
-        return <Badge variant="destructive">停止中</Badge>;
+    // ステータスを数値として解釈し、2値システムで表示
+    const numStatus = status === '1' || status === 'active' ? 1 : 0;
+    switch (numStatus) {
+      case 1:
+        return <Badge variant="default" className="bg-green-500 text-white">有効</Badge>;
+      case 0:
+        return <Badge variant="destructive" className="bg-red-500 text-white">無効</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -480,9 +480,8 @@ function UserEditContent() {
                       onChange={(e) => handleInputChange('status', e.target.value)}
                       className="w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                     >
-                      <option value="active">アクティブ</option>
-                      <option value="inactive">非アクティブ</option>
-                      <option value="suspended">停止中</option>
+                      <option value="1">有効</option>
+                      <option value="0">無効</option>
                     </select>
                   </div>
                   

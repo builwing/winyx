@@ -17,7 +17,7 @@ export default function NewUserPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    status: 'active',
+    status: '1',
     roles: ['user'] as string[],
     profile: {
       bio: '',
@@ -300,9 +300,8 @@ export default function NewUserPage() {
                   onChange={(e) => handleInputChange('status', e.target.value)}
                   className="w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
-                  <option value="active">アクティブ</option>
-                  <option value="inactive">非アクティブ</option>
-                  <option value="suspended">停止中</option>
+                  <option value="1">有効</option>
+                  <option value="0">無効</option>
                 </select>
               </div>
               
