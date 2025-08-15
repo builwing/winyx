@@ -1998,6 +1998,166 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
+---
+
+## 第6節 組織管理機能の追加
+
+### 10.6.1 背景と設計判断
+
+プロジェクトの進展に伴い、複数のユーザーをグループ化して管理する必要性が生じた。当初、第20章で提案されていた独立した「組織管理サービス（OrgService）」の導入が検討されたが、現在のユーザー規模（約100名）とシステムの複雑性を考慮した結果、以下の理由から**UserService内への機能追加**が最適と判断された。
+
+- **過剰設計の回避:** 独立サービスは、現在の規模では管理コストやRPC通信のオーバーヘッドが大きい。
+- **データ整合性の確保:** ユーザーと組織情報を単一データベース（`winyx_core`）で管理することで、外部キー制約やトランザクションによる強力な整合性を保証できる。
+- **既存資産の活用:** UserServiceに実装済みの認証・RBAC（ロールベースアクセス制御）機能を拡張して、組織内の役割管理に再利用できる。
+- **開発の迅速化:** 新規サービスのセットアップが不要なため、迅速に機能を実装できる。
+
+このアプローチは、将来的なサービス分離の可能性を妨げるものではなく、YAGNI（You Ain't Gonna Need It）の原則に基づいた、現実的で段階的な拡張戦略である。
+
+### 10.6.2 データベーススキーマ拡張
+
+`winyx_core` データベースに、組織とメンバーシップを管理するための新しいテーブルを追加する。
+
+- [x] 組織管理用テーブルのスキーマ定義
+
+```bash
+vim /var/www/winyx/contracts/user_service/schema_extension_org.sql
+```
+
+```sql
+-- UserService用拡張テーブル（winyx_coreに追加）
+
+-- 組織テーブル
+CREATE TABLE IF NOT EXISTS orgs (
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name       VARCHAR(100) NOT NULL COMMENT '組織名',
+    owner_id   BIGINT NOT NULL COMMENT '組織の所有者 (users.id)',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT,
+    INDEX idx_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='組織情報を格納するテーブル';
+
+-- 組織メンバーシップテーブル
+CREATE TABLE IF NOT EXISTS org_members (
+    org_id         BIGINT NOT NULL COMMENT '組織ID',
+    user_id        BIGINT NOT NULL COMMENT 'ユーザーID',
+    role_id        BIGINT NOT NULL COMMENT '組織内での役割を示すロールID',
+    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (org_id, user_id),
+    FOREIGN KEY (org_id) REFERENCES orgs(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='ユーザーと組織の関連付けおよび役割を管理するテーブル';
+```
+
+### 10.6.3 APIエンドポイント定義の拡張
+
+`user.api` ファイルに、組織管理用のエンドポイントを追加する。
+
+- [x] `user.api` に組織管理セクションを追加
+
+```go
+// user.api ファイルの末尾に追記
+
+// ======== 組織管理 型定義 ========
+
+type (
+    // 組織情報
+    Org {
+        Id        int64  `json:"id"`
+        Name      string `json:"name"`
+        OwnerId   int64  `json:"owner_id"`
+        CreatedAt string `json:"created_at"`
+        UpdatedAt string `json:"updated_at"`
+    }
+
+    // 組織作成リクエスト
+    CreateOrgReq {
+        Name      string `json:"name" validate:"required,min=2,max=100"`
+    }
+
+    // 組織取得リクエスト
+    GetOrgReq {
+        Id        int64 `path:"id"`
+    }
+    
+    // 組織更新リクエスト
+    UpdateOrgReq {
+        Id        int64  `path:"id"`
+        Name      string `json:"name" validate:"required,min=2,max=100"`
+    }
+    
+    // 組織メンバー追加リクエスト
+    AddOrgMemberReq {
+        OrgId     int64 `path:"id"`
+        UserId    int64 `json:"user_id"`
+        RoleName  string `json:"role_name"` // "admin", "member" など
+    }
+)
+
+
+// ======== 組織管理 API エンドポイント定義 ========
+
+@server(
+    prefix: /api/v1
+    group: org
+    jwt: Auth
+)
+service user-api {
+    // 組織の作成 (認証ユーザーがオーナーになる)
+    @handler createOrg
+    post /orgs (CreateOrgReq) returns (Org)
+
+    // 自分が所属する組織一覧の取得
+    @handler listMyOrgs
+    get /orgs returns ([]Org)
+
+    // 特定の組織情報の取得
+    @handler getOrg
+    get /orgs/:id (GetOrgReq) returns (Org)
+    
+    // 組織情報の更新 (組織オーナー or システム管理者)
+    @handler updateOrg
+    put /orgs/:id (UpdateOrgReq) returns (Org)
+    
+    // 組織の削除 (組織オーナー or システム管理者)
+    @handler deleteOrg
+    delete /orgs/:id (GetOrgReq) returns (CommonRes)
+    
+    // 組織へのメンバー追加 (組織管理者)
+    @handler addOrgMember
+    post /orgs/:id/members (AddOrgMemberReq) returns (CommonRes)
+    
+    // 組織メンバーの削除 (組織管理者)
+    @handler removeOrgMember
+    delete /orgs/:id/members/:userId (RemoveOrgMemberReq) returns (CommonRes)
+}
+```
+
+### 10.6.4 既存RBACとの統合
+
+組織管理機能は、既存のRBACシステムを拡張して利用する。
+
+1.  **組織内ロールの定義:**
+    既存の `roles` テーブルに、組織内での役割を示す新しいロールを追加する。
+    ```sql
+    INSERT INTO roles (name, description) VALUES 
+    ('org_admin', '組織管理者'),
+    ('org_member', '組織メンバー')
+    ON DUPLICATE KEY UPDATE name=name;
+    ```
+
+2.  **権限の割り当て:**
+    `permissions` テーブルと `role_permissions` テーブルを利用して、これらの新しいロールに適切な権限（例：「組織メンバーの追加・削除」権限を `org_admin` に付与）を割り当てる。
+
+3.  **メンバーシップとロールの紐付け:**
+    `org_members` テーブルが、どのユーザー (`user_id`) が、どの組織 (`org_id`) で、どの役割 (`role_id`) を持つかを管理する。これにより、システム全体のRBACと組織レベルのRBACを柔軟に組み合わせることが可能になる。
+
+この設計により、認証と権限管理のロジックを再利用しつつ、マルチテナントに近い機能を提供できる。
+
+
 ### 10.5.4 動作確認
 
 #### 完了した動作テスト
