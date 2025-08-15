@@ -67,6 +67,22 @@ func (l *GetUserByIdLogic) GetUserById() (resp *types.GetUserRes, err error) {
 		status = "unknown"
 	}
 	
+	// プロフィール情報を取得
+	var profileInfo types.UserProfile
+	profile, err := l.svcCtx.UserProfilesModel.FindOneByUserId(l.ctx, uint64(userIdInt))
+	if err == nil {
+		profileInfo = types.UserProfile{
+			Bio:         profile.Bio,
+			Phone:       profile.Phone,
+			Address:     profile.Address,
+			BirthDate:   profile.BirthDate.Format("2006-01-02"),
+			Gender:      profile.Gender,
+			Occupation:  profile.Occupation,
+			Website:     profile.Website,
+			SocialLinks: profile.SocialLinks,
+		}
+	}
+
 	// レスポンスを構築
 	userInfo := types.UserInfo{
 		UserId:    int64(user.Id),
@@ -74,6 +90,7 @@ func (l *GetUserByIdLogic) GetUserById() (resp *types.GetUserRes, err error) {
 		Email:     user.Email,
 		Status:    status,
 		Roles:     roles,
+		Profile:   profileInfo,
 		CreatedAt: user.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		UpdatedAt: user.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}

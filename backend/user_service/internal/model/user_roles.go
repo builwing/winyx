@@ -21,6 +21,7 @@ type (
         FindByUserId(ctx context.Context, userId int64) ([]*UserRoles, error)
         FindByUserIdWithRole(ctx context.Context, userId int64) ([]*UserRoleInfo, error)
         DeleteByUserIdAndRoleId(ctx context.Context, userId, roleId int64) error
+        DeleteByUserId(ctx context.Context, userId int64) error
         CheckUserRole(ctx context.Context, userId int64, roleName string) (bool, error)
     }
 
@@ -152,6 +153,15 @@ func (m *customUserRolesModel) DeleteByUserIdAndRoleId(ctx context.Context, user
         return conn.ExecCtx(ctx, query, userId, roleId)
     }, userRolesUserIdKey)
     return err
+}
+
+func (m *customUserRolesModel) DeleteByUserId(ctx context.Context, userId int64) error {
+	userRolesUserIdKey := fmt.Sprintf("%s%v", cacheUserRolesUserIdPrefix, userId)
+	_, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		query := fmt.Sprintf("delete from %s where `user_id` = ?", m.table)
+		return conn.ExecCtx(ctx, query, userId)
+	}, userRolesUserIdKey)
+	return err
 }
 
 func (m *defaultUserRolesModel) Update(ctx context.Context, data *UserRoles) error {

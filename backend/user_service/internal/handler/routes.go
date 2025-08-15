@@ -16,12 +16,17 @@ import (
 func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		rest.WithMiddlewares(
-			[]rest.Middleware{serverCtx.AdminAuth},
+			[]rest.Middleware{serverCtx.AdminAuthMiddleware},
 			[]rest.Route{
 				{
 					Method:  http.MethodGet,
 					Path:    "/",
 					Handler: admin.ListUsersHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/",
+					Handler: admin.CreateUserHandler(serverCtx),
 				},
 				{
 					Method:  http.MethodGet,
@@ -35,8 +40,8 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				},
 				{
 					Method:  http.MethodPut,
-					Path:    "/:id/status",
-					Handler: admin.UpdateUserStatusHandler(serverCtx),
+					Path:    "/:id",
+					Handler: admin.UpdateUserByIdHandler(serverCtx),
 				},
 			}...,
 		),
@@ -46,7 +51,7 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 
 	server.AddRoutes(
 		rest.WithMiddlewares(
-			[]rest.Middleware{serverCtx.AdminAuth},
+			[]rest.Middleware{serverCtx.AdminAuthMiddleware},
 			[]rest.Route{
 				{
 					Method:  http.MethodGet,

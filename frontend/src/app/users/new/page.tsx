@@ -73,15 +73,40 @@ export default function NewUserPage() {
     setError(null);
     
     try {
-      const response = await fetch('http://127.0.0.1:8889/api/v1/users/register', {
+      // まず管理者でログインしてトークンを取得
+      const loginResponse = await fetch(`/api/v1/users/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          email: 'wingnakada@gmail.com',
+          password: 'Winyx&7377'
+        }),
+      });
+
+      if (!loginResponse.ok) {
+        const errorText = await loginResponse.text();
+        throw new Error(`ログインに失敗しました: ${loginResponse.status} - ${errorText}`);
+      }
+
+      const loginData = await loginResponse.json();
+      const token = loginData.token;
+
+      // 管理者用ユーザー作成APIを呼び出し
+      const response = await fetch('/api/v1/admin/users/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
           name: formData.name,
           email: formData.email,
           password: formData.password,
+          status: formData.status,
+          roles: formData.roles,
+          profile: formData.profile,
         }),
       });
 

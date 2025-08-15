@@ -24,6 +24,32 @@ type (
 	}
 )
 
+// 管理者用ユーザー作成
+type (
+	AdminCreateUserReq {
+		Name     string            `json:"name" validate:"required,min=2,max=50"`
+		Email    string            `json:"email" validate:"required,email"`
+		Password string            `json:"password" validate:"required,min=6"`
+		Status   string            `json:"status" validate:"required"`
+		Roles    []string          `json:"roles" validate:"required"`
+		Profile  CreateUserProfile `json:"profile,optional"`
+	}
+	CreateUserProfile {
+		Bio         string `json:"bio,optional"`
+		Phone       string `json:"phone,optional"`
+		Address     string `json:"address,optional"`
+		BirthDate   string `json:"birth_date,optional"`
+		Gender      string `json:"gender,optional"`
+		Occupation  string `json:"occupation,optional"`
+		Website     string `json:"website,optional"`
+		SocialLinks string `json:"social_links,optional"`
+	}
+	AdminCreateUserRes {
+		User    UserInfo `json:"user"`
+		Message string   `json:"message"`
+	}
+)
+
 // ユーザーログイン
 type (
 	LoginReq {
@@ -76,6 +102,9 @@ type (
 		Name   string `json:"name,optional"`
 		Email  string `json:"email,optional" validate:"email"`
 		Status string `json:"status,optional"`
+	}
+	UpdateUserRolesReq {
+		Roles []string `json:"roles" validate:"required"`
 	}
 	UpdateProfileReq {
 		AvatarUrl   string `json:"avatar_url,optional"`
@@ -186,14 +215,26 @@ service user-api {
 	@handler listUsers
 	get / (ListUsersReq) returns (ListUsersRes)
 
+	@handler createUser
+	post / (AdminCreateUserReq) returns (AdminCreateUserRes)
+
 	@handler getUserById
 	get /:id returns (GetUserRes)
 
 	@handler deleteUser
 	delete /:id returns (CommonRes)
 
+	@handler updateUser
+	put /:id (UpdateUserReq) returns (UpdateUserRes)
+
+	@handler updateUserProfile
+	put /:id/profile (UpdateProfileReq) returns (UpdateUserRes)
+
 	@handler updateUserStatus
 	put /:id/status (UpdateUserReq) returns (UpdateUserRes)
+
+	@handler updateUserRoles
+	put /:id/roles (UpdateUserRolesReq) returns (UpdateUserRes)
 }
 
 @server (

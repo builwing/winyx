@@ -3,10 +3,10 @@ package admin
 import (
 	"net/http"
 
+	"github.com/zeromicro/go-zero/rest/httpx"
 	"user_service/internal/logic/admin"
 	"user_service/internal/svc"
 	"user_service/internal/types"
-	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
 func UpdateUserStatusHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

@@ -4,6 +4,7 @@ import (
     "context"
     "database/sql"
     "fmt"
+    "strings"
     "time"
 
     "github.com/zeromicro/go-zero/core/stores/cache"
@@ -20,6 +21,7 @@ type (
         rolesModel
         FindByName(ctx context.Context, name string) (*Roles, error)
         FindAll(ctx context.Context) ([]*Roles, error)
+        FindAllByNames(ctx context.Context, names []string) ([]*Roles, error)
     }
 
     Roles struct {
@@ -118,6 +120,30 @@ func (m *customRolesModel) FindAll(ctx context.Context) ([]*Roles, error) {
     default:
         return nil, err
     }
+}
+
+func (m *customRolesModel) FindAllByNames(ctx context.Context, names []string) ([]*Roles, error) {
+	var resp []*Roles
+	if len(names) == 0 {
+		return resp, nil
+	}
+
+	placeholders := strings.Repeat("?,", len(names)-1) + "?"
+	query := fmt.Sprintf("select %s from %s where `name` IN (%s)", rolesRows, m.table, placeholders)
+
+	// []string を []interface{} に変換
+	args := make([]interface{}, len(names))
+	for i, v := range names {
+		args[i] = v
+	}
+
+	err := m.QueryRowsNoCacheCtx(ctx, &resp, query, args...)
+	switch err {
+	case nil:
+		return resp, nil
+	default:
+		return nil, err
+	}
 }
 
 func (m *defaultRolesModel) Update(ctx context.Context, data *Roles) error {

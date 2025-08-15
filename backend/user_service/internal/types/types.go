@@ -3,6 +3,20 @@
 
 package types
 
+type AdminCreateUserReq struct {
+	Name     string            `json:"name" validate:"required,min=2,max=50"`
+	Email    string            `json:"email" validate:"required,email"`
+	Password string            `json:"password" validate:"required,min=6"`
+	Status   string            `json:"status" validate:"required"`
+	Roles    []string          `json:"roles" validate:"required"`
+	Profile  CreateUserProfile `json:"profile,optional"`
+}
+
+type AdminCreateUserRes struct {
+	User    UserInfo `json:"user"`
+	Message string   `json:"message"`
+}
+
 type AssignRoleReq struct {
 	UserId int64 `json:"user_id" validate:"required"`
 	RoleId int64 `json:"role_id" validate:"required"`
@@ -11,6 +25,17 @@ type AssignRoleReq struct {
 type CommonRes struct {
 	Message string `json:"message"`
 	Success bool   `json:"success"`
+}
+
+type CreateUserProfile struct {
+	Bio         string `json:"bio,optional"`
+	Phone       string `json:"phone,optional"`
+	Address     string `json:"address,optional"`
+	BirthDate   string `json:"birth_date,optional"`
+	Gender      string `json:"gender,optional"`
+	Occupation  string `json:"occupation,optional"`
+	Website     string `json:"website,optional"`
+	SocialLinks string `json:"social_links,optional"`
 }
 
 type GetUserRes struct {
@@ -92,9 +117,21 @@ type UpdateUserReq struct {
 	Status string `json:"status,optional"`
 }
 
+type UpdateUserByAdminReq struct {
+	Name    string      `json:"name,optional"`
+	Email   string      `json:"email,optional,validate:email"`
+	Status  string      `json:"status,optional"`
+	Roles   []string    `json:"roles,optional"`
+	Profile UserProfile `json:"profile,optional"`
+}
+
 type UpdateUserRes struct {
 	User    UserInfo `json:"user"`
 	Message string   `json:"message"`
+}
+
+type UpdateUserRolesReq struct {
+	Roles []string `json:"roles" validate:"required"`
 }
 
 type UserInfo struct {

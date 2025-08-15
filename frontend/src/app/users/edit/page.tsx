@@ -166,6 +166,7 @@ function UserEditContent() {
   };
 
   const handleSave = async () => {
+    if (!userId) return;
     setSaving(true);
     setError(null);
     setSuccessMessage(null);
@@ -191,8 +192,8 @@ function UserEditContent() {
       const loginData = await loginResponse.json();
       const token = loginData.token;
 
-      // ユーザー基本情報の更新
-      const userResponse = await fetch(`/api/v1/admin/users/${userId}`, {
+      // ユーザー情報の更新 (新しいAPIエンドポイント)
+      const response = await fetch(`/api/v1/admin/users/${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -202,31 +203,42 @@ function UserEditContent() {
           name: formData.name,
           email: formData.email,
           status: formData.status,
+          roles: formData.roles,
+          profile: formData.profile,
         }),
       });
 
-      // プロフィール情報の更新
-      const profileResponse = await fetch(`/api/v1/admin/users/${userId}/profile`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData.profile),
-      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
 
-      // 本来はAPI応答を確認すべきですが、デモのため成功とします
-      setSuccessMessage('ユーザー情報を正常に更新しました');
+      const result = await response.json();
+      setSuccessMessage(result.message || 'ユーザー情報を正常に更新しました');
       
-      // ユーザー情報を再取得
-      await fetchUser();
+      // 更新後のユーザー情報をフォームに再セット
+      const updatedUser = result.user;
+      setUser(updatedUser);
+      setFormData({
+        name: updatedUser.name || '',
+        email: updatedUser.email || '',
+        status: updatedUser.status || 'active',
+        roles: updatedUser.roles || ['user'],
+        profile: {
+          bio: updatedUser.profile?.bio || '',
+          phone: updatedUser.profile?.phone || '',
+          address: updatedUser.profile?.address || '',
+          birth_date: updatedUser.profile?.birth_date || '',
+          gender: updatedUser.profile?.gender || '',
+          occupation: updatedUser.profile?.occupation || '',
+          website: updatedUser.profile?.website || '',
+          social_links: updatedUser.profile?.social_links || '',
+        }
+      });
       
     } catch (err) {
       setError(err instanceof Error ? err.message : '更新に失敗しました');
       console.error('Failed to update user:', err);
-      
-      // エラー時でも成功メッセージを表示（デモのため）
-      setSuccessMessage('ユーザー情報を更新しました（デモモード）');
     } finally {
       setSaving(false);
     }
