@@ -398,6 +398,163 @@ service UserService {
 
 ---
 
+## 12. データベース設計戦略（Microservices DB Strategy）
+
+### 12.1 基本設計方針
+Winyxプロジェクトでは**ハイブリッド型Database per Service**パターンを採用：
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   winyx_core    │    │   winyx_task    │    │   winyx_mem     │
+│   (共通・認証)   │    │  (タスク管理)    │    │ (メッセージ)     │
+├─────────────────┤    ├─────────────────┤    ├─────────────────┤
+│ ✓ users         │    │ • tasks         │    │ • messages      │
+│ ✓ sessions      │    │ • task_assign   │    │ • channels      │
+│ ✓ user_profiles │    │ • categories    │    │ • participants  │
+│ ✓ roles         │    │ • task_history  │    │ • attachments   │
+│ ✓ permissions   │    │ • comments      │    │ • message_read  │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### 12.2 データベース分散ルール
+
+#### 📊 winyx_core（認証基盤）
+**責任範囲**: ユーザー認証・認可、セッション管理、プロフィール管理
+- 🎯 **対象サービス**: UserService、AuthService、GatewayService
+- 🔧 **接続設定**: `DataSource: "winyx:PASSWORD@tcp(127.0.0.1:3306)/winyx_core?charset=utf8mb4&parseTime=true"`
+
+#### 📋 winyx_task（タスク管理）
+**責任範囲**: タスク作成・管理、アサイン・スケジューリング、コメント・添付ファイル
+- 🎯 **対象サービス**: TaskService、ProjectService
+- 🔧 **接続設定**: `DataSource: "winyx:PASSWORD@tcp(127.0.0.1:3306)/winyx_task?charset=utf8mb4&parseTime=true"`
+
+#### 💬 winyx_mem（メッセージ管理）
+**責任範囲**: チャンネル管理、リアルタイムメッセージング、ファイル共有
+- 🎯 **対象サービス**: MessageService、NotificationService
+- 🔧 **接続設定**: `DataSource: "winyx:PASSWORD@tcp(127.0.0.1:3306)/winyx_mem?charset=utf8mb4&parseTime=true"`
+
+### 12.3 サービス間データアクセスルール
+
+#### パターン1: API呼び出し（推奨）
+```go
+// TaskServiceからUserServiceの情報取得
+type TaskService struct {
+    userClient UserServiceClient
+}
+
+func (s *TaskService) GetTaskWithUser(taskId int64) (*TaskWithUser, error) {
+    task, err := s.taskRepo.FindById(taskId)
+    if err != nil {
+        return nil, err
+    }
+    
+    // UserServiceのAPIを呼び出し
+    user, err := s.userClient.GetUser(context.Background(), task.UserId)
+    if err != nil {
+        logx.Errorf("Failed to get user info: %v", err)
+        // ユーザー情報取得失敗でもタスク情報は返却
+        return &TaskWithUser{Task: task}, nil
+    }
+    
+    return &TaskWithUser{Task: task, User: user}, nil
+}
+```
+
+#### パターン2: イベント駆動同期（キャッシュ更新）
+```go
+// ユーザー情報変更時のイベント発行
+func (l *UserUpdateLogic) UserUpdate(req *types.UserUpdateReq) error {
+    // ユーザー情報更新
+    err := l.svcCtx.UsersModel.Update(l.ctx, updatedUser)
+    if err != nil {
+        return err
+    }
+    
+    // 他サービスに変更通知（オプション）
+    l.eventBus.Publish("user.updated", UserUpdatedEvent{
+        UserId: req.UserId,
+        Name:   req.Name,
+        Email:  req.Email,
+    })
+    
+    return nil
+}
+```
+
+### 12.4 データ整合性ガイドライン
+
+#### ✅ 必須事項
+- **Foreign Key制約はサービス内のみ**：`user_profiles.user_id`は`winyx_core.users.id`を参照
+- **Cross-DB参照は避ける**：TaskServiceから直接`winyx_core.users`テーブルをJOINしない
+- **API呼び出しでデータ補完**：必要に応じてUserServiceのAPIから情報取得
+
+#### ❌ 禁止事項
+- **直接的なCross-DB JOIN**：`winyx_task.tasks JOIN winyx_core.users`
+- **複数DBにまたがるトランザクション**：分散トランザクションは複雑化の原因
+- **サービス境界を越えたForeign Key**：異なるサービスのテーブル間でのFK設定
+
+### 12.5 実装パターン例
+
+#### GoZero設定ファイル
+```yaml
+# UserService設定例
+Name: user_service
+Mysql:
+  DataSource: "winyx:Winyx&7377@tcp(127.0.0.1:3306)/winyx_core?charset=utf8mb4&parseTime=true"
+
+# TaskService設定例  
+Name: task_service
+Mysql:
+  DataSource: "winyx:Winyx&7377@tcp(127.0.0.1:3306)/winyx_task?charset=utf8mb4&parseTime=true"
+```
+
+#### サービス間クライアント
+```go
+// internal/clients/userserviceclient.go
+type UserServiceClient struct {
+    baseURL string
+    client  *http.Client
+}
+
+func (c *UserServiceClient) GetUser(ctx context.Context, userID int64) (*User, error) {
+    url := fmt.Sprintf("%s/api/v1/users/%d", c.baseURL, userID)
+    req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+    if err != nil {
+        return nil, err
+    }
+    
+    // JWT認証ヘッダー追加
+    req.Header.Set("Authorization", "Bearer "+c.getServiceToken())
+    
+    resp, err := c.client.Do(req)
+    if err != nil {
+        return nil, fmt.Errorf("user service call failed: %w", err)
+    }
+    defer resp.Body.Close()
+    
+    var result struct {
+        User User `json:"user"`
+    }
+    if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+        return nil, err
+    }
+    
+    return &result.User, nil
+}
+```
+
+### 12.6 詳細仕様参照
+マイクロサービス間の詳細なデータベース設計戦略は以下を参照：
+📄 **`docs/マイクロサービス_データベース設計戦略.md`**
+
+- Database per Serviceパターンの詳細
+- 各データベースのスキーマ設計
+- Sagaパターンによるデータ整合性保証
+- セキュリティとパフォーマンス最適化
+- マイグレーション戦略
+
+---
+
 ## 付録A：vim 置換ショートカット
 
 - [ ] ドキュメント一括置換（ファイル内）
