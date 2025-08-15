@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"fmt"
 
 	"user_service/internal/svc"
 	"user_service/internal/types"
@@ -24,7 +25,49 @@ func NewUserDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *UserDe
 }
 
 func (l *UserDetailLogic) UserDetail(req *types.UserDetailReq) (resp *types.UserDetailRes, err error) {
-	// todo: add your logic here and delete this line
-
-	return
+	// Get user from database
+	user, err := l.svcCtx.UsersModel.FindOne(l.ctx, uint64(req.UserId))
+	if err != nil {
+		return nil, err
+	}
+	
+	// Get user roles (simplified - default to empty for now)
+	var roles []string
+	
+	// If no roles found, assign default role
+	if len(roles) == 0 {
+		roles = []string{"user"}
+	}
+	
+	// Get user profile using model (simplified)
+	var profile *types.UserProfileData
+	userProfile, err := l.svcCtx.UserProfilesModel.FindOneByUserId(l.ctx, uint64(req.UserId))
+	if err == nil && userProfile != nil {
+		profile = &types.UserProfileData{
+			Bio:         userProfile.Bio,
+			Phone:       userProfile.Phone,
+			Address:     userProfile.Address,
+			BirthDate:   userProfile.BirthDate.Format("2006-01-02"),
+			Gender:      userProfile.Gender,
+			Occupation:  userProfile.Occupation,
+			Website:     userProfile.Website,
+			SocialLinks: userProfile.SocialLinks,
+		}
+	}
+	
+	// Convert to response format
+	userInfo := types.UserInfo{
+		UserId:    int64(user.Id),
+		Name:      user.Name,
+		Email:     user.Email,
+		Status:    fmt.Sprintf("%d", user.Status),
+		Roles:     roles,
+		Profile:   profile,
+		CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
+		UpdatedAt: user.UpdatedAt.Format("2006-01-02 15:04:05"),
+	}
+	
+	return &types.UserDetailRes{
+		User: userInfo,
+	}, nil
 }
