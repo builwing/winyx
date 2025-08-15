@@ -12,6 +12,7 @@
 - すべてのコード断片・コマンドの直前に、**チェックボックス付きの簡潔な説明**を置く（進捗が見えるように）。
 - Winyxの**命名規約と配置規約**を守り、同じ表記を全ドキュメント・コードに反映する。
 - 返答は日本語。端末操作の説明は **vim 前提**（nanoは不可）。
+- sudo権限の必要な処理は、どのような処理を行うのかを示して、私に頼んで下さい。
 
 ---
 
@@ -85,7 +86,7 @@ Winyxは契約駆動開発（Contract-First）を採用し、バックエンド�
 - OS: Ubuntu 24.04 LTS
 - Timezone: Asia/Tokyo
 - DB: MariaDB（`winyx_core`）、Redis（ローカル）
-- Go version: 1.22+
+- Go version: 1.24+
 - Framework: Go-Zero + goctl (最新)
 - フロント：Next.js 15（VPSにはビルド結果のみ配置）
 - Cache: Redis
@@ -405,7 +406,7 @@ Winyxプロジェクトでは**ハイブリッド型Database per Service**パタ
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   winyx_core    │    │   winyx_task    │    │   winyx_mem     │
+│   winyx_core    │    │   winyx_task    │    │   winyx_msg     │
 │   (共通・認証)   │    │  (タスク管理)    │    │ (メッセージ)     │
 ├─────────────────┤    ├─────────────────┤    ├─────────────────┤
 │ ✓ users         │    │ • tasks         │    │ • messages      │
