@@ -1,233 +1,156 @@
 syntax = "v1"
 
-info(
-    title: "Winyx User Service API"
-    desc: "ユーザー管理マイクロサービス"
-    author: "Winyx Team"
-    version: "v1.0"
+info (
+	title:   "Winyx User Service API"
+	desc:    "ユーザー管理マイクロサービス - 認証・ユーザーCRUD・プロフィール・ロール管理"
+	author:  "Winyx Team"
+	version: "v1.0"
 )
 
-// ======== リクエスト・レスポンス型定義 ========
-
-// ユーザー登録
+// ======== 共通型定義 ========
 type (
-    RegisterReq {
-        Name        string `json:"name" validate:"required,min=2,max=50"`
-        Email       string `json:"email" validate:"required,email"`
-        Password    string `json:"password" validate:"required,min=6"`
-    }
-    RegisterRes {
-        UserId      int64  `json:"user_id"`
-        Name        string `json:"name"`
-        Email       string `json:"email"`
-        Token       string `json:"token"`
-        Message     string `json:"message"`
-    }
+	UserProfileData {
+		Bio         string `json:"bio,optional"`
+		Phone       string `json:"phone,optional"`
+		Address     string `json:"address,optional"`
+		BirthDate   string `json:"birth_date,optional"`
+		Gender      string `json:"gender,optional"`
+		Occupation  string `json:"occupation,optional"`
+		Website     string `json:"website,optional"`
+		SocialLinks string `json:"social_links,optional"`
+	}
+	UserInfo {
+		UserId    int64            `json:"user_id"`
+		Name      string           `json:"name"`
+		Email     string           `json:"email"`
+		Status    string           `json:"status"`
+		Roles     []string         `json:"roles,omitempty"`
+		Profile   *UserProfileData `json:"profile,omitempty"`
+		CreatedAt string           `json:"created_at"`
+		UpdatedAt string           `json:"updated_at"`
+	}
 )
 
-// ユーザーログイン
+// ======== 認証API ========
 type (
-    LoginReq {
-        Email       string `json:"email" validate:"required,email"`
-        Password    string `json:"password" validate:"required"`
-    }
-    LoginRes {
-        UserId      int64  `json:"user_id"`
-        Name        string `json:"name"`
-        Email       string `json:"email"`
-        Token       string `json:"token"`
-        ExpiresAt   int64  `json:"expires_at"`
-        Message     string `json:"message"`
-    }
+	LoginReq {
+		Email    string `json:"email" validate:"required,email"`
+		Password string `json:"password" validate:"required"`
+	}
+	LoginRes {
+		AccessToken string `json:"access_token"`
+		ExpireTime  int64  `json:"expire_time"`
+	}
+	RegisterReq {
+		Name     string `json:"name" validate:"required,min=2,max=50"`
+		Email    string `json:"email" validate:"required,email"`
+		Password string `json:"password" validate:"required,min=6"`
+	}
+	RegisterRes {
+		Id    int64  `json:"id"`
+		Name  string `json:"name"`
+		Email string `json:"email"`
+	}
 )
 
-// ユーザー情報
+// ======== ユーザー管理API ========
 type (
-    UserInfo {
-        UserId      int64  `json:"user_id"`
-        Name        string `json:"name"`
-        Email       string `json:"email"`
-        Status      string `json:"status"`
-        Roles       []string `json:"roles"`
-        Profile     UserProfile `json:"profile,optional"`
-        CreatedAt   string `json:"created_at"`
-        UpdatedAt   string `json:"updated_at"`
-    }
-    
-    UserProfile {
-        AvatarUrl    string `json:"avatar_url,optional"`
-        Bio          string `json:"bio,optional"`
-        Phone        string `json:"phone,optional"`
-        Address      string `json:"address,optional"`
-        BirthDate    string `json:"birth_date,optional"`
-        Gender       string `json:"gender,optional"`
-        Occupation   string `json:"occupation,optional"`
-        Website      string `json:"website,optional"`
-        SocialLinks  string `json:"social_links,optional"`
-        Preferences  string `json:"preferences,optional"`
-    }
-    
-    GetUserRes {
-        User        UserInfo `json:"user"`
-        Message     string   `json:"message"`
-    }
+	UserListReq {
+		Page  int64 `form:"page,optional,default=1"`
+		Limit int64 `form:"limit,optional,default=10"`
+	}
+	UserListRes {
+		Users []UserInfo `json:"users"`
+		Total int64      `json:"total"`
+		Page  int64      `json:"page"`
+		Limit int64      `json:"limit"`
+	}
+	UserDetailReq {
+		UserId int64 `path:"id"`
+	}
+	UserDetailRes {
+		User UserInfo `json:"user"`
+	}
+	UserCreateReq {
+		Name     string           `json:"name" validate:"required"`
+		Email    string           `json:"email" validate:"required,email"`
+		Password string           `json:"password" validate:"required,min=6"`
+		Status   string           `json:"status,optional"`
+		Roles    []string         `json:"roles,optional"`
+		Profile  *UserProfileData `json:"profile,optional"`
+	}
+	UserCreateRes {
+		User UserInfo `json:"user"`
+	}
+	UserUpdateReq {
+		UserId  int64            `path:"id"`
+		Name    string           `json:"name" validate:"required"`
+		Email   string           `json:"email" validate:"required,email"`
+		Status  string           `json:"status,optional"`
+		Roles   []string         `json:"roles,optional"`
+		Profile *UserProfileData `json:"profile,optional"`
+	}
+	UserUpdateRes {
+		User UserInfo `json:"user"`
+	}
+	UserDeleteReq {
+		UserId int64 `path:"id"`
+	}
+	UserDeleteRes {
+		Message string `json:"message"`
+	}
 )
 
-// ユーザー更新
+// ======== プロフィール管理API ========
 type (
-    UpdateUserReq {
-        Name        string `json:"name,optional"`
-        Email       string `json:"email,optional" validate:"email"`
-        Status      string `json:"status,optional"`
-    }
-    
-    UpdateProfileReq {
-        AvatarUrl    string `json:"avatar_url,optional"`
-        Bio          string `json:"bio,optional"`
-        Phone        string `json:"phone,optional"`
-        Address      string `json:"address,optional"`
-        BirthDate    string `json:"birth_date,optional"`
-        Gender       string `json:"gender,optional"`
-        Occupation   string `json:"occupation,optional"`
-        Website      string `json:"website,optional"`
-        SocialLinks  string `json:"social_links,optional"`
-        Preferences  string `json:"preferences,optional"`
-    }
-    
-    UpdateUserRes {
-        User        UserInfo `json:"user"`
-        Message     string   `json:"message"`
-    }
-    
-    // 管理者によるユーザー更新リクエスト
-    UpdateUserByAdminReq {
-        Name        string      `json:"name,optional"`
-        Email       string      `json:"email,optional,validate:email"`
-        Status      string      `json:"status,optional"`
-        Roles       []string    `json:"roles,optional"`
-        Profile     UserProfile `json:"profile,optional"`
-    }
+	Request {
+		Name string `path:"name,optional,default=you"`
+	}
+	Response {
+		Message string `json:"message"`
+	}
+	UserInfoRes {
+		Id    int64  `json:"id"`
+		Name  string `json:"name"`
+		Email string `json:"email"`
+	}
 )
 
-// ユーザー一覧（管理者用）
-type (
-    ListUsersReq {
-        Page        int `form:"page,optional,default=1" validate:"min=1"`
-        Limit       int `form:"limit,optional,default=10" validate:"min=1,max=100"`
-        Status      string `form:"status,optional"`
-        Role        string `form:"role,optional"`
-    }
-    
-    ListUsersRes {
-        Users       []UserInfo `json:"users"`
-        Total       int64      `json:"total"`
-        Page        int        `json:"page"`
-        Limit       int        `json:"limit"`
-        Message     string     `json:"message"`
-    }
-)
+// ======== サービス定義 ========
+// 認証なしエンドポイント
+service UserService {
+	@handler LoginHandler
+	post /api/v1/users/login (LoginReq) returns (LoginRes)
 
-// 権限・役割管理
-type (
-    RoleInfo {
-        RoleId      int64  `json:"role_id"`
-        Name        string `json:"name"`
-        Description string `json:"description"`
-        CreatedAt   string `json:"created_at"`
-    }
-    
-    ListRolesRes {
-        Roles       []RoleInfo `json:"roles"`
-        Message     string     `json:"message"`
-    }
-    
-    AssignRoleReq {
-        UserId      int64 `json:"user_id" validate:"required"`
-        RoleId      int64 `json:"role_id" validate:"required"`
-    }
-)
-
-// 共通レスポンス
-type (
-    CommonRes {
-        Message     string `json:"message"`
-        Success     bool   `json:"success"`
-    }
-)
-
-// ======== API エンドポイント定義 ========
-
-@server(
-    prefix: /api/v1/users
-    group: user
-)
-service user-api {
-    // 認証不要エンドポイント
-    @handler register
-    post /register (RegisterReq) returns (RegisterRes)
-    
-    @handler login
-    post /login (LoginReq) returns (LoginRes)
+	@handler RegisterHandler
+	post /api/v1/users/register (RegisterReq) returns (RegisterRes)
 }
 
-@server(
-    prefix: /api/v1/users
-    group: user
-    jwt: Auth
+// 管理者専用エンドポイント（JWT認証必須）
+@server (
+	jwt:    Auth
+	prefix: /api
 )
-service user-api {
-    // 認証必須エンドポイント
-    @handler getProfile
-    get /profile returns (GetUserRes)
-    
-    @handler updateProfile
-    put /profile (UpdateUserReq) returns (UpdateUserRes)
-    
-    @handler updateUserProfile
-    put /profile/details (UpdateProfileReq) returns (UpdateUserRes)
-    
-    @handler deleteAccount
-    delete /profile returns (CommonRes)
-    
-    @handler logout
-    post /logout returns (CommonRes)
+service UserService {
+	@handler UserListHandler
+	get /v1/admin/users (UserListReq) returns (UserListRes)
+
+	@handler UserDetailHandler
+	get /v1/admin/users/:id (UserDetailReq) returns (UserDetailRes)
+
+	@handler UserCreateHandler
+	post /v1/admin/users (UserCreateReq) returns (UserCreateRes)
+
+	@handler UserUpdateHandler
+	put /v1/admin/users/:id (UserUpdateReq) returns (UserUpdateRes)
+
+	@handler UserDeleteHandler
+	delete /v1/admin/users/:id (UserDeleteReq) returns (UserDeleteRes)
+
+	@handler UserInfoHandler
+	get /user/info (Request) returns (Response)
+
+	@handler UpdateProfileHandler
+	post /user/profile (Request) returns (Response)
 }
 
-@server(
-    prefix: /api/v1/admin/users
-    group: admin
-    jwt: Auth
-    middleware: AdminAuth
-)
-service user-api {
-    // 管理者専用エンドポイント
-    @handler listUsers
-    get / (ListUsersReq) returns (ListUsersRes)
-    
-    @handler getUserById
-    get /:id returns (GetUserRes)
-    
-    @handler updateUserById
-    put /:id (UpdateUserByAdminReq) returns (UpdateUserRes)
-    
-    @handler deleteUser
-    delete /:id returns (CommonRes)
-}
-
-@server(
-    prefix: /api/v1/admin/roles
-    group: admin
-    jwt: Auth
-    middleware: AdminAuth
-)
-service user-api {
-    // 役割管理エンドポイント
-    @handler listRoles
-    get / returns (ListRolesRes)
-    
-    @handler assignRole
-    post /assign (AssignRoleReq) returns (CommonRes)
-    
-    @handler removeRole
-    delete /remove (AssignRoleReq) returns (CommonRes)
-}

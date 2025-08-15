@@ -3,17 +3,9 @@
 
 package types
 
-type Request struct {
-	Name string `path:"name,optional,default=you"`
-}
-
-type Response struct {
-	Message string `json:"message"`
-}
-
 type LoginReq struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
 }
 
 type LoginRes struct {
@@ -22,15 +14,63 @@ type LoginRes struct {
 }
 
 type RegisterReq struct {
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Name     string `json:"name" validate:"required,min=2,max=50"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,min=6"`
 }
 
 type RegisterRes struct {
 	Id    int64  `json:"id"`
 	Name  string `json:"name"`
 	Email string `json:"email"`
+}
+
+type Request struct {
+	Name string `path:"name,optional,default=you"`
+}
+
+type Response struct {
+	Message string `json:"message"`
+}
+
+type UserCreateReq struct {
+	Name     string           `json:"name" validate:"required"`
+	Email    string           `json:"email" validate:"required,email"`
+	Password string           `json:"password" validate:"required,min=6"`
+	Status   string           `json:"status,optional"`
+	Roles    []string         `json:"roles,optional"`
+	Profile  *UserProfileData `json:"profile,optional"`
+}
+
+type UserCreateRes struct {
+	User UserInfo `json:"user"`
+}
+
+type UserDeleteReq struct {
+	UserId int64 `path:"id"`
+}
+
+type UserDeleteRes struct {
+	Message string `json:"message"`
+}
+
+type UserDetailReq struct {
+	UserId int64 `path:"id"`
+}
+
+type UserDetailRes struct {
+	User UserInfo `json:"user"`
+}
+
+type UserInfo struct {
+	UserId    int64            `json:"user_id"`
+	Name      string           `json:"name"`
+	Email     string           `json:"email"`
+	Status    string           `json:"status"`
+	Roles     []string         `json:"roles,omitempty"`
+	Profile   *UserProfileData `json:"profile,omitempty"`
+	CreatedAt string           `json:"created_at"`
+	UpdatedAt string           `json:"updated_at"`
 }
 
 type UserInfoRes struct {
@@ -51,34 +91,6 @@ type UserListRes struct {
 	Limit int64      `json:"limit"`
 }
 
-type UserInfo struct {
-	UserId    int64             `json:"user_id"`
-	Name      string            `json:"name"`
-	Email     string            `json:"email"`
-	Status    string            `json:"status"`
-	Roles     []string          `json:"roles,omitempty"`
-	Profile   *UserProfileData  `json:"profile,omitempty"`
-	CreatedAt string            `json:"created_at"`
-	UpdatedAt string            `json:"updated_at"`
-}
-
-type UserDetailReq struct {
-	UserId int64 `path:"id"`
-}
-
-type UserDetailRes struct {
-	User UserInfo `json:"user"`
-}
-
-type UserUpdateReq struct {
-	UserId  int64             `path:"id"`
-	Name    string            `json:"name"`
-	Email   string            `json:"email"`
-	Status  string            `json:"status,optional"`
-	Roles   []string          `json:"roles,optional"`
-	Profile *UserProfileData  `json:"profile,optional"`
-}
-
 type UserProfileData struct {
 	Bio         string `json:"bio,optional"`
 	Phone       string `json:"phone,optional"`
@@ -90,27 +102,15 @@ type UserProfileData struct {
 	SocialLinks string `json:"social_links,optional"`
 }
 
+type UserUpdateReq struct {
+	UserId  int64            `path:"id"`
+	Name    string           `json:"name" validate:"required"`
+	Email   string           `json:"email" validate:"required,email"`
+	Status  string           `json:"status,optional"`
+	Roles   []string         `json:"roles,optional"`
+	Profile *UserProfileData `json:"profile,optional"`
+}
+
 type UserUpdateRes struct {
 	User UserInfo `json:"user"`
-}
-
-type UserCreateReq struct {
-	Name     string            `json:"name"`
-	Email    string            `json:"email"`
-	Password string            `json:"password"`
-	Status   string            `json:"status,optional"`
-	Roles    []string          `json:"roles,optional"`
-	Profile  *UserProfileData  `json:"profile,optional"`
-}
-
-type UserCreateRes struct {
-	User UserInfo `json:"user"`
-}
-
-type UserDeleteReq struct {
-	UserId int64 `path:"id"`
-}
-
-type UserDeleteRes struct {
-	Message string `json:"message"`
 }

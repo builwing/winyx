@@ -6,7 +6,6 @@ package handler
 import (
 	"net/http"
 
-	protected "user_service/internal/handler/protected"
 	"user_service/internal/svc"
 
 	"github.com/zeromicro/go-zero/rest"
@@ -18,12 +17,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 			{
 				Method:  http.MethodPost,
 				Path:    "/api/v1/users/login",
-				Handler: loginHandler(serverCtx),
+				Handler: LoginHandler(serverCtx),
 			},
 			{
 				Method:  http.MethodPost,
 				Path:    "/api/v1/users/register",
-				Handler: registerHandler(serverCtx),
+				Handler: RegisterHandler(serverCtx),
 			},
 		},
 	)
@@ -33,37 +32,37 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 			{
 				Method:  http.MethodGet,
 				Path:    "/user/info",
-				Handler: protected.UserInfoHandler(serverCtx),
+				Handler: UserInfoHandler(serverCtx),
 			},
 			{
 				Method:  http.MethodPost,
 				Path:    "/user/profile",
-				Handler: protected.UpdateProfileHandler(serverCtx),
+				Handler: UpdateProfileHandler(serverCtx),
 			},
 			{
 				Method:  http.MethodGet,
-				Path:    "/v1/admin/users/",
-				Handler: protected.UserListHandler(serverCtx),
+				Path:    "/v1/admin/users",
+				Handler: UserListHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/v1/admin/users",
+				Handler: UserCreateHandler(serverCtx),
 			},
 			{
 				Method:  http.MethodGet,
 				Path:    "/v1/admin/users/:id",
-				Handler: protected.UserDetailHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodPost,
-				Path:    "/v1/admin/users/",
-				Handler: protected.UserCreateHandler(serverCtx),
+				Handler: UserDetailHandler(serverCtx),
 			},
 			{
 				Method:  http.MethodPut,
 				Path:    "/v1/admin/users/:id",
-				Handler: protected.UserUpdateHandler(serverCtx),
+				Handler: UserUpdateHandler(serverCtx),
 			},
 			{
 				Method:  http.MethodDelete,
 				Path:    "/v1/admin/users/:id",
-				Handler: protected.UserDeleteHandler(serverCtx),
+				Handler: UserDeleteHandler(serverCtx),
 			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
