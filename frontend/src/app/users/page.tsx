@@ -63,8 +63,8 @@ export default function UsersPage() {
       }
 
       const loginData = await loginResponse.json();
-      console.log('fetchUsers: Login successful, token length:', loginData.access_token?.length || 'no token');
-      const token = loginData.access_token;
+      console.log('fetchUsers: Login successful, token length:', (loginData.token || loginData.access_token)?.length || 'no token');
+      const token = loginData.token || loginData.access_token;
 
       // 取得したトークンでユーザー一覧を取得
       console.log('fetchUsers: Fetching user list...');
@@ -158,7 +158,7 @@ export default function UsersPage() {
 
       const loginData = await loginResponse.json();
       console.log('handleDeleteUser: Login successful');
-      const token = loginData.access_token;
+      const token = loginData.token || loginData.access_token;
 
       console.log('handleDeleteUser: Attempting to delete user...');
       const response = await fetch(`/api/v1/admin/users/${userId}`, {

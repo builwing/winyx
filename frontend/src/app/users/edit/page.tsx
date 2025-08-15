@@ -83,7 +83,7 @@ function UserEditContent() {
       }
 
       const loginData = await loginResponse.json();
-      const token = loginData.access_token;
+      const token = loginData.token || loginData.access_token;
 
       // 取得したトークンでユーザー情報を取得
       const response = await fetch(`/api/v1/admin/users/${userId}`, {
@@ -215,7 +215,7 @@ function UserEditContent() {
       }
 
       const loginData = await loginResponse.json();
-      const token = loginData.access_token;
+      const token = loginData.token || loginData.access_token;
 
       // ユーザー情報の更新 (新しいAPIエンドポイント)
       const requestData = {

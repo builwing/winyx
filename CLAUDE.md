@@ -57,10 +57,11 @@ Winyxは契約駆動開発（Contract-First）を採用し、バックエンド�
 - `.env.example` - 環境変数テンプレート
 
 ### 命名とファイル配置（Winyx標準）
-- **サービス名**：`snake_case` または `lowerCamel`。**ハイフン禁止**（例：`test_api` はOK、`test-api` はNG）。
-- **YAMLの Name:** は **サービス名と同一**（例：`Name: test_api`）。
-- **設定ファイル名**：`etc/<service>-api.yaml` を推奨（例：`etc/test_api-api.yaml`）。
-  - 既存プロジェクトに `testapi_api.yaml` がある場合は**統一対象**。新規作成は上記の命名に寄せる。
+- **サービス名**：`snake_case` または `lowerCamel`。**ハイフン禁止**（例：`user_service` はOK、`user-service` はNG）。
+- **YAMLの Name:** は **サービス名と同一**（例：`Name: user_service`）。
+- **設定ファイル名**：`etc/<service>-api.yaml` を推奨（例：`etc/user_service-api.yaml`）。
+- **サービスディレクトリ**：`/var/www/winyx/backend/` 配下に `<service_name>` で作成（例：`user_service`, `order_service`）。
+- **systemdサービス名**：`winyx-<service>.service` 形式（例：`winyx-user.service`, `winyx-order.service`）。
 - **VPS 配置**：`/var/www/winyx/` 配下（`backend/`, `frontend/`, `contracts/`）。
 
 ### 開発・デプロイフロー

@@ -12,6 +12,7 @@ import (
 type ServiceContext struct {
 	Config              config.Config
 	Conn                sqlx.SqlConn
+	DB                  sqlx.SqlConn // 追加：test_api互換のため
 	UsersModel          model.UsersModel
 	RolesModel          model.RolesModel
 	UserRolesModel      model.UserRolesModel
@@ -24,6 +25,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	return &ServiceContext{
 		Config:              c,
 		Conn:                conn,
+		DB:                  conn, // 追加：test_api互換のため
 		UsersModel:          model.NewUsersModel(conn, c.CacheConf),
 		RolesModel:          model.NewRolesModel(conn, c.CacheConf),
 		UserRolesModel:      model.NewUserRolesModel(conn, c.CacheConf),

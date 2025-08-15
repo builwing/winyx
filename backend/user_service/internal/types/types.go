@@ -3,150 +3,83 @@
 
 package types
 
-type AdminCreateUserReq struct {
-	Name     string            `json:"name" validate:"required,min=2,max=50"`
-	Email    string            `json:"email" validate:"required,email"`
-	Password string            `json:"password" validate:"required,min=6"`
-	Status   string            `json:"status" validate:"required"`
-	Roles    []string          `json:"roles" validate:"required"`
-	Profile  CreateUserProfile `json:"profile,optional"`
+type Request struct {
+	Name string `path:"name,optional,default=you"`
 }
 
-type AdminCreateUserRes struct {
-	User    UserInfo `json:"user"`
-	Message string   `json:"message"`
-}
-
-type AssignRoleReq struct {
-	UserId int64 `json:"user_id" validate:"required"`
-	RoleId int64 `json:"role_id" validate:"required"`
-}
-
-type CommonRes struct {
+type Response struct {
 	Message string `json:"message"`
-	Success bool   `json:"success"`
-}
-
-type CreateUserProfile struct {
-	Bio         string `json:"bio,optional"`
-	Phone       string `json:"phone,optional"`
-	Address     string `json:"address,optional"`
-	BirthDate   string `json:"birth_date,optional"`
-	Gender      string `json:"gender,optional"`
-	Occupation  string `json:"occupation,optional"`
-	Website     string `json:"website,optional"`
-	SocialLinks string `json:"social_links,optional"`
-}
-
-type GetUserRes struct {
-	User    UserInfo `json:"user"`
-	Message string   `json:"message"`
-}
-
-type ListRolesRes struct {
-	Roles   []RoleInfo `json:"roles"`
-	Message string     `json:"message"`
-}
-
-type ListUsersReq struct {
-	Page   int    `form:"page,optional,default=1" validate:"min=1"`
-	Limit  int    `form:"limit,optional,default=10" validate:"min=1,max=100"`
-	Status string `form:"status,optional"`
-	Role   string `form:"role,optional"`
-}
-
-type ListUsersRes struct {
-	Users   []UserInfo `json:"users"`
-	Total   int64      `json:"total"`
-	Page    int        `json:"page"`
-	Limit   int        `json:"limit"`
-	Message string     `json:"message"`
 }
 
 type LoginReq struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type LoginRes struct {
-	UserId    int64  `json:"user_id"`
-	Name      string `json:"name"`
-	Email     string `json:"email"`
-	Token     string `json:"token"`
-	ExpiresAt int64  `json:"expires_at"`
-	Message   string `json:"message"`
+	AccessToken string `json:"access_token"`
+	ExpireTime  int64  `json:"expire_time"`
 }
 
 type RegisterReq struct {
-	Name     string `json:"name" validate:"required,min=2,max=50"`
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,min=6"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type RegisterRes struct {
-	UserId  int64  `json:"user_id"`
-	Name    string `json:"name"`
-	Email   string `json:"email"`
-	Token   string `json:"token"`
-	Message string `json:"message"`
+	Id    int64  `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }
 
-type RoleInfo struct {
-	RoleId      int64  `json:"role_id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	CreatedAt   string `json:"created_at"`
+type UserInfoRes struct {
+	Id    int64  `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }
 
-type UpdateProfileReq struct {
-	AvatarUrl   string `json:"avatar_url,optional"`
-	Bio         string `json:"bio,optional"`
-	Phone       string `json:"phone,optional"`
-	Address     string `json:"address,optional"`
-	BirthDate   string `json:"birth_date,optional"`
-	Gender      string `json:"gender,optional"`
-	Occupation  string `json:"occupation,optional"`
-	Website     string `json:"website,optional"`
-	SocialLinks string `json:"social_links,optional"`
-	Preferences string `json:"preferences,optional"`
+type UserListReq struct {
+	Page  int64 `form:"page,optional,default=1"`
+	Limit int64 `form:"limit,optional,default=10"`
 }
 
-type UpdateUserReq struct {
-	Name   string `json:"name,optional"`
-	Email  string `json:"email,optional" validate:"email"`
-	Status string `json:"status,optional"`
-}
-
-type UpdateUserByAdminReq struct {
-	Name    string      `json:"name,optional"`
-	Email   string      `json:"email,optional,validate:email"`
-	Status  string      `json:"status,optional"`
-	Roles   []string    `json:"roles,optional"`
-	Profile UserProfile `json:"profile,optional"`
-}
-
-type UpdateUserRes struct {
-	User    UserInfo `json:"user"`
-	Message string   `json:"message"`
-}
-
-type UpdateUserRolesReq struct {
-	Roles []string `json:"roles" validate:"required"`
+type UserListRes struct {
+	Users []UserInfo `json:"users"`
+	Total int64      `json:"total"`
+	Page  int64      `json:"page"`
+	Limit int64      `json:"limit"`
 }
 
 type UserInfo struct {
-	UserId    int64       `json:"user_id"`
-	Name      string      `json:"name"`
-	Email     string      `json:"email"`
-	Status    string      `json:"status"`
-	Roles     []string    `json:"roles"`
-	Profile   UserProfile `json:"profile,optional"`
-	CreatedAt string      `json:"created_at"`
-	UpdatedAt string      `json:"updated_at"`
+	UserId    int64             `json:"user_id"`
+	Name      string            `json:"name"`
+	Email     string            `json:"email"`
+	Status    string            `json:"status"`
+	Roles     []string          `json:"roles,omitempty"`
+	Profile   *UserProfileData  `json:"profile,omitempty"`
+	CreatedAt string            `json:"created_at"`
+	UpdatedAt string            `json:"updated_at"`
 }
 
-type UserProfile struct {
-	AvatarUrl   string `json:"avatar_url,optional"`
+type UserDetailReq struct {
+	UserId int64 `path:"id"`
+}
+
+type UserDetailRes struct {
+	User UserInfo `json:"user"`
+}
+
+type UserUpdateReq struct {
+	UserId  int64             `path:"id"`
+	Name    string            `json:"name"`
+	Email   string            `json:"email"`
+	Status  string            `json:"status,optional"`
+	Roles   []string          `json:"roles,optional"`
+	Profile *UserProfileData  `json:"profile,optional"`
+}
+
+type UserProfileData struct {
 	Bio         string `json:"bio,optional"`
 	Phone       string `json:"phone,optional"`
 	Address     string `json:"address,optional"`
@@ -155,5 +88,29 @@ type UserProfile struct {
 	Occupation  string `json:"occupation,optional"`
 	Website     string `json:"website,optional"`
 	SocialLinks string `json:"social_links,optional"`
-	Preferences string `json:"preferences,optional"`
+}
+
+type UserUpdateRes struct {
+	User UserInfo `json:"user"`
+}
+
+type UserCreateReq struct {
+	Name     string            `json:"name"`
+	Email    string            `json:"email"`
+	Password string            `json:"password"`
+	Status   string            `json:"status,optional"`
+	Roles    []string          `json:"roles,optional"`
+	Profile  *UserProfileData  `json:"profile,optional"`
+}
+
+type UserCreateRes struct {
+	User UserInfo `json:"user"`
+}
+
+type UserDeleteReq struct {
+	UserId int64 `path:"id"`
+}
+
+type UserDeleteRes struct {
+	Message string `json:"message"`
 }

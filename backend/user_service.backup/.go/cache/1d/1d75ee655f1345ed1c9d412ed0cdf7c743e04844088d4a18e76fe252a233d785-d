@@ -1,0 +1,7 @@
+./assignrolelogic.go
+./deleteuserlogic.go
+./getuserbyidlogic.go
+./listroleslogic.go
+./listuserslogic.go
+./removerolelogic.go
+./updateuserstatuslogic.go

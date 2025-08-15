@@ -6,8 +6,7 @@ package handler
 import (
 	"net/http"
 
-	admin "user_service/internal/handler/admin"
-	user "user_service/internal/handler/user"
+	protected "user_service/internal/handler/protected"
 	"user_service/internal/svc"
 
 	"github.com/zeromicro/go-zero/rest"
@@ -15,110 +14,59 @@ import (
 
 func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
-		rest.WithMiddlewares(
-			[]rest.Middleware{serverCtx.AdminAuthMiddleware},
-			[]rest.Route{
-				{
-					Method:  http.MethodGet,
-					Path:    "/",
-					Handler: admin.ListUsersHandler(serverCtx),
-				},
-				{
-					Method:  http.MethodPost,
-					Path:    "/",
-					Handler: admin.CreateUserHandler(serverCtx),
-				},
-				{
-					Method:  http.MethodGet,
-					Path:    "/:id",
-					Handler: admin.GetUserByIdHandler(serverCtx),
-				},
-				{
-					Method:  http.MethodDelete,
-					Path:    "/:id",
-					Handler: admin.DeleteUserHandler(serverCtx),
-				},
-				{
-					Method:  http.MethodPut,
-					Path:    "/:id",
-					Handler: admin.UpdateUserByIdHandler(serverCtx),
-				},
-			}...,
-		),
-		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
-		rest.WithPrefix("/api/v1/admin/users"),
-	)
-
-	server.AddRoutes(
-		rest.WithMiddlewares(
-			[]rest.Middleware{serverCtx.AdminAuthMiddleware},
-			[]rest.Route{
-				{
-					Method:  http.MethodGet,
-					Path:    "/",
-					Handler: admin.ListRolesHandler(serverCtx),
-				},
-				{
-					Method:  http.MethodPost,
-					Path:    "/assign",
-					Handler: admin.AssignRoleHandler(serverCtx),
-				},
-				{
-					Method:  http.MethodDelete,
-					Path:    "/remove",
-					Handler: admin.RemoveRoleHandler(serverCtx),
-				},
-			}...,
-		),
-		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
-		rest.WithPrefix("/api/v1/admin/roles"),
-	)
-
-	server.AddRoutes(
 		[]rest.Route{
 			{
 				Method:  http.MethodPost,
-				Path:    "/login",
-				Handler: user.LoginHandler(serverCtx),
+				Path:    "/api/v1/users/login",
+				Handler: loginHandler(serverCtx),
 			},
 			{
 				Method:  http.MethodPost,
-				Path:    "/register",
-				Handler: user.RegisterHandler(serverCtx),
+				Path:    "/api/v1/users/register",
+				Handler: registerHandler(serverCtx),
 			},
 		},
-		rest.WithPrefix("/api/v1/users"),
 	)
 
 	server.AddRoutes(
 		[]rest.Route{
 			{
+				Method:  http.MethodGet,
+				Path:    "/user/info",
+				Handler: protected.UserInfoHandler(serverCtx),
+			},
+			{
 				Method:  http.MethodPost,
-				Path:    "/logout",
-				Handler: user.LogoutHandler(serverCtx),
+				Path:    "/user/profile",
+				Handler: protected.UpdateProfileHandler(serverCtx),
 			},
 			{
 				Method:  http.MethodGet,
-				Path:    "/profile",
-				Handler: user.GetProfileHandler(serverCtx),
+				Path:    "/v1/admin/users/",
+				Handler: protected.UserListHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/v1/admin/users/:id",
+				Handler: protected.UserDetailHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/v1/admin/users/",
+				Handler: protected.UserCreateHandler(serverCtx),
 			},
 			{
 				Method:  http.MethodPut,
-				Path:    "/profile",
-				Handler: user.UpdateProfileHandler(serverCtx),
+				Path:    "/v1/admin/users/:id",
+				Handler: protected.UserUpdateHandler(serverCtx),
 			},
 			{
 				Method:  http.MethodDelete,
-				Path:    "/profile",
-				Handler: user.DeleteAccountHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodPut,
-				Path:    "/profile/details",
-				Handler: user.UpdateUserProfileHandler(serverCtx),
+				Path:    "/v1/admin/users/:id",
+				Handler: protected.UserDeleteHandler(serverCtx),
 			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
-		rest.WithPrefix("/api/v1/users"),
+		rest.WithPrefix("/api"),
 	)
 }

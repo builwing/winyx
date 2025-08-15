@@ -1,0 +1,53 @@
+name: gha
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - "**/*.md"
+      - "LICENSE"
+  pull_request:
+
+jobs:
+  "CI":
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:  # Use versions consistent with zipkin-go's Go support policy.
+        os: [macos-latest, windows-latest, ubuntu-latest]
+        go: ["1.22"]  # Current Go version
+        include:
+          - os: ubuntu-latest
+            go: "1.21"
+          - os: ubuntu-latest
+            go: "1.20"  # Floor Go version of zipkin-go (current - 2)
+    steps:
+      # Set fetch-depth: 0 to fetch commit history and tags for use in version calculation
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: Lint files
+        uses: golangci/golangci-lint-action@v4
+        with:
+          # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
+          version: latest
+
+      - name: Run tests
+        run: go test -coverprofile coverage.txt -v ./...
+        env:
+          CGO_ENABLED: 1
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          name: zipkin-go test reports
+          fail_ci_if_error: false
+          files: ./coverage.txt

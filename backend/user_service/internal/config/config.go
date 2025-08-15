@@ -13,5 +13,6 @@ type Config struct {
     CacheConf cache.CacheConf
     Auth struct {
         AccessSecret string
+        AccessExpire int64
     }
 }
