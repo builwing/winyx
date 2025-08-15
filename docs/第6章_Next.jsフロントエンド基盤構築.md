@@ -1,6 +1,6 @@
 # 第6章 Next.jsフロントエンド基盤構築
 
-> 本章では、WinyxプロジェクトのNext.js 15（App Router）を使用したモダンなフロントエンド基盤構築について解説します。TypeScript、Tailwind CSS、shadcnを活用した開発手法を提供します。
+> 本章では、WinyxプロジェクトのNext.js 15（App Router）を使用したモダンなフロントエンド基盤構築について解説します。TypeScript、Tailwind CSS、shadcnを活用し、Go-Zero RPC接続アーキテクチャに対応した開発手法を提供します。
 
 ## 重要な変更点（Next.js 15対応）
 
@@ -105,6 +105,11 @@ npm install -D tailwindcss postcss autoprefixer
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  output: 'export', // 静的エクスポート設定
+  trailingSlash: true,
+  images: {
+    unoptimized: true
+  }
 }
 
 module.exports = nextConfig
@@ -416,8 +421,8 @@ vim /var/www/winyx/frontend/.env.local
 ```
 
 ```env
-# API設定
-NEXT_PUBLIC_API_URL=http://localhost:8888
+# API設定（本番環境では空文字でNginxプロキシ経由）
+NEXT_PUBLIC_API_URL=
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # 認証設定
@@ -499,70 +504,79 @@ const nextConfig = {
 module.exports = nextConfig
 ```
 
-### 6.2.4 環境別通信アーキテクチャ
+### 6.2.4 RPC接続アーキテクチャ
 
-Winyxプロジェクトでは、開発効率と本番パフォーマンスの最適化のため、環境別に異なる通信方式を採用しています。
+Winyxプロジェクトでは、フロントエンドからバックエンドへの通信は以下のアーキテクチャを採用しています。
 
-#### 開発環境アーキテクチャ
-
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   ブラウザ       │────▶│  Next.js        │────▶│   Go-Zero       │
-│  localhost      │ HTTP│  Dev Server     │ HTTP│   REST API      │
-│                 │     │  (Port: 3000)   │     │  (Port: 8888)   │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                               │
-                               ▼
-                        [Hot Reload]
-                        [開発者ツール]
-```
-
-**開発環境の特徴:**
-- Next.js開発サーバー（3000）からHTTP/RESTでGo-Zero API（8888）に直接接続
-- ホットリロード、開発者ツールの活用が可能
-- デバッグが容易で、レスポンス内容を直接確認可能
-- CORS設定により外部からのアクセスが可能
-
-#### 本番環境アーキテクチャ
+#### 全体アーキテクチャ
 
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   ブラウザ       │────▶│  Next.js        │────▶│  Go-Zero RPC    │
-│  (Public)       │ HTTP│  API Routes     │ gRPC│  (Port: 9090)   │
-│                 │     │  (内部実行)      │     │   (内部のみ)     │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                               │
-                               ▼
-                      [Server-Side Execution]
-                      [高速内部通信]
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   ブラウザ       │────▶│    Nginx        │────▶│   Go-Zero       │────▶│  Go-Zero RPC    │
+│  (winyx.jp)     │ HTTP│  (Reverse Proxy)│ HTTP│   REST API      │ gRPC│  (Port: 9090)   │
+│                 │     │  /api/* → :8888 │     │  (Port: 8888)   │     │   (内部のみ)     │
+└─────────────────┘     └─────────────────┘     └─────────────────┘     └─────────────────┘
+                                                          │
+                                                          ▼
+                                                    [JWT認証]
+                                                    [APIゲートウェイ]
 ```
 
-**本番環境の特徴:**
-- Next.js API Routesがサーバーサイドで内部gRPCによりGo-Zero RPC（9090）と通信
-- 高速な内部通信によるレスポンス時間の最適化
+**アーキテクチャの特徴:**
+- ブラウザからの全てのAPIリクエストはNginxを経由
+- Nginxが`/api/*`へのリクエストをREST API（8888）にプロキシ
+- REST APIがバックエンドのgRPCサービス（9090）と内部通信
 - RPCポートは外部に公開されず、セキュリティが強化
-- サーバーサイドレンダリング（SSR）との親和性が高い
 
-#### 環境切り替えの仕組み
+#### 静的エクスポート対応
 
-- [ ] 環境判定とAPI接続先の自動切り替え
-```typescript
-// src/lib/api/config.ts
-const API_CONFIG = {
-  development: {
-    baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888',
-    mode: 'direct', // 直接REST API接続
-  },
-  production: {
-    baseURL: '/api', // Next.js API Routes経由
-    mode: 'proxy', // API Routes経由でRPC接続
-  },
-};
+Next.js 15では静的エクスポート（`output: 'export'`）を使用しているため：
 
-export const getApiConfig = () => {
-  const env = process.env.NODE_ENV || 'development';
-  return API_CONFIG[env as keyof typeof API_CONFIG];
-};
+```
+┌─────────────────┐
+│  静的HTMLファイル  │
+│ (out/ディレクトリ) │
+└─────────────────┘
+         ▼
+┌─────────────────┐
+│     Nginx       │  ← 静的ファイル配信
+│   /api/* proxy  │  ← APIプロキシ
+└─────────────────┘
+```
+
+**静的エクスポートの利点:**
+- サーバーサイドのNode.js不要
+- 高速な静的ファイル配信
+- Nginxのみで配信可能
+- スケーラビリティの向上
+
+#### Nginxプロキシ設定
+
+- [ ] Nginx設定ファイル（/etc/nginx/sites-available/winyx）
+```nginx
+server {
+    listen 80;
+    server_name winyx.jp www.winyx.jp;
+    
+    # API プロキシ設定
+    location /api/ {
+        proxy_pass http://localhost:8888;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    
+    # フロントエンド静的ファイル（Static Export）
+    root /var/www/winyx/frontend/out;
+    index index.html;
+    
+    # SPAのルーティング対応
+    location / {
+        try_files $uri $uri/ $uri.html /index.html;
+    }
+}
 ```
 
 ---
@@ -733,59 +747,92 @@ export const useAuth = () => {
 }
 ```
 
-### 6.3.2 環境別APIクライアントの設定
+### 6.3.2 APIクライアントの設定
 
-- [ ] 環境対応APIクライアントの設定
+- [ ] APIクライアントの設定（Nginxプロキシ対応）
 ```bash
 vim /var/www/winyx/frontend/src/lib/api/client.ts
 ```
 
 ```typescript
-import axios, { AxiosError, AxiosResponse } from 'axios'
-import Cookies from 'js-cookie'
-import { getApiConfig } from './config'
+// APIクライアント設定
 
-const apiConfig = getApiConfig()
+// 相対パスを使用（Nginxプロキシ経由）
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
-// APIクライアントの作成（環境別設定）
-export const api = axios.create({
-  baseURL: apiConfig.baseURL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-})
+class ApiClient {
+  private baseUrl: string;
+  private headers: Record<string, string>;
 
-// 開発環境用：直接REST API接続
-const createDirectApiClient = () => {
-  const directApi = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888',
-    timeout: 10000,
-    headers: {
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl;
+    this.headers = {
       'Content-Type': 'application/json',
-    },
-  })
-  
-  return directApi
+      'Accept': 'application/json',
+    };
+  }
+
+  private async request<T>(
+    method: string,
+    endpoint: string,
+    data?: any
+  ): Promise<T> {
+    const url = `${this.baseUrl}${endpoint}`;
+    
+    const config: RequestInit = {
+      method,
+      headers: this.headers,
+    };
+
+    if (data) {
+      config.body = JSON.stringify(data);
+    }
+
+    try {
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      }
+      
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        return response.json();
+      }
+      
+      return response.text() as any;
+    } catch (error) {
+      console.error('API Request failed:', error);
+      throw error;
+    }
+  }
+
+  async get<T>(endpoint: string): Promise<T> {
+    return this.request<T>('GET', endpoint);
+  }
+
+  async post<T>(endpoint: string, data?: any): Promise<T> {
+    return this.request<T>('POST', endpoint, data);
+  }
+
+  async put<T>(endpoint: string, data?: any): Promise<T> {
+    return this.request<T>('PUT', endpoint, data);
+  }
+
+  async delete<T>(endpoint: string): Promise<T> {
+    return this.request<T>('DELETE', endpoint);
+  }
+
+  setAuthToken(token: string) {
+    this.headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  clearAuthToken() {
+    delete this.headers['Authorization'];
+  }
 }
 
-// 本番環境用：API Routes経由接続
-const createProxyApiClient = () => {
-  const proxyApi = axios.create({
-    baseURL: '/api', // Next.js API Routes
-    timeout: 10000,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  })
-  
-  return proxyApi
-}
-
-// 環境に応じたAPIクライアント
-export const environmentApi = process.env.NODE_ENV === 'production' 
-  ? createProxyApiClient() 
-  : createDirectApiClient()
+export const apiRequest = new ApiClient(API_BASE_URL);
 
 // リクエストインターセプター
 api.interceptors.request.use(
@@ -1599,10 +1646,11 @@ export class ErrorBoundary extends React.Component<
 
 本章で構築したNext.jsフロントエンド基盤により：
 
-1. **モダンな開発環境** - Next.js 14 App Router、TypeScript、Tailwind CSS
-2. **堅牢な認証システム** - JWTトークン、リフレッシュトークン、認証ミドルウェア
-3. **効率的な状態管理** - Zustand、React Query、カスタムフック
-4. **再利用可能なUI** - shadcn/ui、コンポーネント設計
-5. **環境別最適化** - 開発時REST API、本番時RPC接続
+1. **モダンな開発環境** - Next.js 15 App Router、TypeScript、Tailwind CSS
+2. **静的エクスポート対応** - 高速配信、Node.js不要、Nginxのみで動作
+3. **RPC接続アーキテクチャ** - Nginx経由でREST API → gRPC通信
+4. **堅牢な認証システム** - JWTトークン、リフレッシュトークン、認証ミドルウェア
+5. **効率的な状態管理** - Zustand、React Query、カスタムフック
+6. **再利用可能なUI** - shadcn/ui、コンポーネント設計
 
-**開発効率と本番パフォーマンスの両立**を実現する基盤が整いました。次章では、この基盤を活用した契約駆動開発とAPI統合について詳しく解説します。
+**静的配信とRPC通信の最適化**により、高速でスケーラブルなフロントエンド基盤が整いました。次章では、この基盤を活用した契約駆動開発とAPI統合について詳しく解説します。
