@@ -40,14 +40,21 @@
 
 ## 2. プロジェクト情報
 
+### プロジェクト概要
+Winyxは契約駆動開発（Contract-First）を採用し、バックエンドをVPS上で稼働させ、フロントエンドはローカルPCで開発・ビルド後にVPSへデプロイする構成です。契約ファイル（.api/.proto）を単一ソースとして集中管理し、CI/CDパイプラインで型定義、SDK、ドキュメント、モックを自動生成して配布します。
+
 ### リポジトリ構造
 - `/var/www/winyx` - プロジェクトルートディレクトリ
-- `backend/` - バックエンドサービス
+- `backend/` - Go-Zeroによるサービス実装
   - `test_api/` - テストAPIサービス (Go-Zero)
-- `frontend/` - フロントエンドアプリケーション
-- `docs/` - ドキュメント
-- `scripts/` - 自動化スクリプト
-- `contracts/` - API契約ファイル
+- `frontend/` - ビルド済み静的ファイル（Next.js出力）
+- `contracts/` - 契約ファイルの管理リポジトリ
+  - `api/` - .api（REST契約定義）とDDLスキーマ
+  - `rpc/` - .proto（gRPC契約定義）
+- `scripts/` - セットアップスクリプトや管理用ツール
+- `docs/` - プロジェクトドキュメント
+- `.env` - 環境変数設定ファイル（Git管理外）
+- `.env.example` - 環境変数テンプレート
 
 ### 命名とファイル配置（Winyx標準）
 - **サービス名**：`snake_case` または `lowerCamel`。**ハイフン禁止**（例：`test_api` はOK、`test-api` はNG）。
@@ -55,6 +62,19 @@
 - **設定ファイル名**：`etc/<service>-api.yaml` を推奨（例：`etc/test_api-api.yaml`）。
   - 既存プロジェクトに `testapi_api.yaml` がある場合は**統一対象**。新規作成は上記の命名に寄せる。
 - **VPS 配置**：`/var/www/winyx/` 配下（`backend/`, `frontend/`, `contracts/`）。
+
+### 開発・デプロイフロー
+```
+[ローカル開発環境]
+├── フロントエンド（Next.js）: コーディング → ビルド → 静的ファイル生成
+├── 契約ファイル編集（.api/.proto）: コミット → CIで自動生成
+└── 生成物（型/SDK/ドキュメント/モック）をnpmや静的配信でフロントへ配布
+
+[VPS本番環境（/var/www/winyx）]
+├── frontend/（ビルド済み静的ファイルをNginxで配信）
+├── backend/（Go-Zeroサービス群: REST APIやRPCサービスをsystemdで常駐）
+└── contracts/（契約ファイルの管理リポジトリ）
+```
 
 ---
 
@@ -209,7 +229,7 @@ redis-cli -h 127.0.0.1 ping
 ```
 
 ### 7.2 goctl model（キャッシュ有効）
-- [ ] DDL から model を生成
+- [ ] DDL から model を生成（DDLスキーマは contracts/api で管理）
 
 ```bash
 cd /var/www/winyx/backend/test_api
@@ -240,7 +260,8 @@ vim /var/www/winyx/backend/test_api/internal/handler/routes.go
 ## 9. 安全策・落とし穴
 - **サービス名ハイフン**は生成済みコードの import path に齟齬を生む。必ず snake_case。
 - **path タグのデフォルト値**はパーサにより無視されることがあるため、**ロジック側で空文字を補完**する。
-- **機微情報**は YAML に直書きせず、`/etc/winyx.d/<service>.env` ＋ systemd `EnvironmentFile=` を推奨。
+- **機微情報**は YAML に直書きせず、環境変数（`.env`ファイル）または `/etc/winyx.d/<service>.env` ＋ systemd `EnvironmentFile=` を推奨。
+- **RESTとRPC使い分け**：外部公開APIはREST、内部高速通信はRPCを推奨。
 
 ---
 
@@ -254,13 +275,17 @@ vim /var/www/winyx/backend/test_api/internal/handler/routes.go
 ## 11. 契約駆動開発（Contract-Driven Development）
 
 ### 11.1 基本概念
-- Go-Zero API契約ファイル（.api）を単一の信頼できる情報源として使用
+- 契約ファイル（.api/.proto）を単一の信頼できる情報源として使用
 - バックエンドとフロントエンドの仕様齟齬を防ぐ開発手法
+- RESTは `.api` → `goctl api plugin` でOpenAPIに変換
+- RPCは `.proto` → `buf`でlintおよび後方互換性チェック
 
 ### 11.2 自動生成システム
-- TypeScript型定義とAPIクライアントの自動生成
-- Flutter/Dart用コードの自動生成  
-- OpenAPI/Swagger仕様書の自動生成
+CIで以下を生成し配布：
+- TypeScript型定義とAPIクライアント（fetch/axios または gRPCクライアント）
+- Flutter/Dart用コード
+- APIドキュメント（Redoc/Swagger UI）
+- モックサーバ定義（Prism / connect dev server）
 - 契約ファイル変更時の自動同期（Git hooks連携）
 
 ### 11.3 実行コマンド
@@ -274,6 +299,64 @@ vim /var/www/winyx/backend/test_api/internal/handler/routes.go
 # Git hooks インストール
 ./scripts/sync_contracts.sh --install-hooks
 ```
+
+### 11.4 契約例
+
+#### REST契約例（.api）
+```api
+syntax = "v1";
+info(
+  title: "User Service API"
+  desc:  "User CRUD endpoints"
+)
+
+type (
+  UserResp {
+    id    int64  `json:"id"`
+    name  string `json:"name"`
+    email string `json:"email"`
+  }
+)
+
+@server(group: user)
+service user-api {
+  @doc "Get user by ID"
+  get /api/v1/users/:id returns(UserResp)
+}
+```
+
+#### RPC契約例（.proto）
+```proto
+syntax = "proto3";
+package user.v1;
+option go_package = "./pb;pb";
+
+message GetUserReq { int64 id = 1; }
+message User { int64 id = 1; string name = 2; string email = 3; }
+service UserService {
+  rpc GetUser(GetUserReq) returns (User);
+}
+```
+
+### 11.5 エラーモデル統一
+全APIで同一フォーマットを返却：
+```json
+{
+  "code": "USER_NOT_FOUND",
+  "message": "User not found",
+  "details": { "id": 123 }
+}
+```
+
+### 11.6 変更検知と安全装置
+- REST: `oasdiff --fail-on-breaking`で破壊的変更検知
+- RPC: `buf breaking`で後方互換性チェック
+- CIで違反が検出された場合はマージ不可に設定
+
+### 11.7 フロント利用手順
+1. npm経由でSDKインストール：`npm install @winyx/api-client` または `@winyx/rpc-client`
+2. 型安全な呼び出しでバックエンドAPIやRPCサービスを利用
+3. モックサーバを起動してバックエンド依存なしでUI開発可能
 
 ---
 
