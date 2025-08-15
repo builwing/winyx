@@ -163,7 +163,7 @@ export default function OrganizationsPage() {
           </div>
           
           <Button
-            onClick={() => setShowCreateForm(!showCreateForm)}
+            onClick={() => window.location.href = '/dashboard/organizations/new'}
             className="flex items-center space-x-2"
           >
             <Plus className="h-4 w-4" />
@@ -229,7 +229,7 @@ export default function OrganizationsPage() {
               新しい組織を作成するか、既存の組織への招待をお待ちください。
             </p>
             <Button
-              onClick={() => setShowCreateForm(true)}
+              onClick={() => window.location.href = '/dashboard/organizations/new'}
               className="flex items-center space-x-2 mx-auto"
             >
               <Plus className="h-4 w-4" />
