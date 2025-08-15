@@ -52,10 +52,30 @@ type UserListRes struct {
 }
 
 type UserInfo struct {
-	UserId    int64  `json:"user_id"`
-	Name      string `json:"name"`
-	Email     string `json:"email"`
-	Status    string `json:"status"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
+	UserId    int64    `json:"user_id"`
+	Name      string   `json:"name"`
+	Email     string   `json:"email"`
+	Status    string   `json:"status"`
+	Roles     []string `json:"roles,omitempty"`
+	CreatedAt string   `json:"created_at"`
+	UpdatedAt string   `json:"updated_at"`
+}
+
+type UserDetailReq struct {
+	UserId int64 `path:"id"`
+}
+
+type UserDetailRes struct {
+	User UserInfo `json:"user"`
+}
+
+type UserUpdateReq struct {
+	UserId int64  `path:"id"`
+	Name   string `json:"name"`
+	Email  string `json:"email"`
+	Status string `json:"status,optional"`
+}
+
+type UserUpdateRes struct {
+	User UserInfo `json:"user"`
 }
