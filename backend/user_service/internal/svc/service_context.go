@@ -15,6 +15,8 @@ type ServiceContext struct {
 	UserProfilesModel  model.UserProfilesModel
 	RolesModel         model.RolesModel
 	UserRolesModel     model.UserRolesModel
+	OrgsModel          model.OrgsModel
+	OrgMembersModel    model.OrgMembersModel
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -28,5 +30,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		UserProfilesModel: model.NewUserProfilesModel(conn, c.CacheConf),
 		RolesModel:        model.NewRolesModel(conn, c.CacheConf),
 		UserRolesModel:    model.NewUserRolesModel(conn, c.CacheConf),
+		OrgsModel:         model.NewOrgsModel(conn, c.CacheConf),
+		OrgMembersModel:   model.NewOrgMembersModel(conn, c.CacheConf),
 	}
 }

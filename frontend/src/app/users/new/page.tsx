@@ -4,10 +4,8 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
 export default function NewUserPage() {
-  const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -118,7 +116,7 @@ export default function NewUserPage() {
       
       // 成功時はユーザー一覧ページに戻る
       alert(`ユーザー「${formData.name}」を作成しました`);
-      router.push('/users');
+      window.location.href = '/users';
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ユーザー作成に失敗しました');
@@ -126,7 +124,7 @@ export default function NewUserPage() {
       
       // エラー時でもデモのため成功扱い
       alert(`ユーザー「${formData.name}」を作成しました（デモモード）`);
-      router.push('/users');
+      window.location.href = '/users';
     } finally {
       setSaving(false);
     }

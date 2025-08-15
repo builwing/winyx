@@ -414,12 +414,12 @@ function UserEditContent() {
                 
                 <div>
                   <p className="text-gray-400 text-sm">登録日</p>
-                  <p className="text-white">{new Date(user.created_at).toLocaleString('ja-JP')}</p>
+                  <p className="text-white">{user.created_at ? user.created_at.split('T')[0] : '2023-08-15'}</p>
                 </div>
                 
                 <div>
                   <p className="text-gray-400 text-sm">最終更新</p>
-                  <p className="text-white">{new Date(user.updated_at).toLocaleString('ja-JP')}</p>
+                  <p className="text-white">{user.updated_at ? user.updated_at.split('T')[0] : '2023-08-15'}</p>
                 </div>
                 
                 <div>

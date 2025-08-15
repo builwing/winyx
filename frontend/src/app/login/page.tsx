@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +21,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const router = useRouter();
   const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -34,7 +32,7 @@ export default function LoginPage() {
       const result = await login(email, password);
       
       if (result.success) {
-        router.push('/');
+        window.location.href = '/';
       } else {
         setError(result.error || 'ログインに失敗しました');
       }

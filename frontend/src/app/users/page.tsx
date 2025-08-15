@@ -1,8 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import AdminHeader from '@/components/AdminHeader';
+import { Lock, AlertCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface User {
@@ -25,6 +30,10 @@ interface UserListResponse {
 
 export default function UsersPage() {
   console.log('UsersPage: Component initialization');
+  
+  // 認証・権限チェック
+  const { isLoggedIn, loading: authLoading } = useAuth();
+  const { isAdmin, getPermissionErrorMessage } = usePermissions();
   
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -234,8 +243,81 @@ export default function UsersPage() {
 
   const totalPages = Math.ceil(totalUsers / limit);
 
+  // 認証チェック中のローディング
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-800 to-gray-900">
+        <AdminHeader />
+        <div className="flex items-center justify-center min-h-[80vh]">
+          <div className="flex items-center space-x-2">
+            <Loader2 className="h-6 w-6 animate-spin text-white" />
+            <span className="text-white">認証情報を確認中...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ログインチェック
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-800 to-gray-900">
+        <AdminHeader />
+        <div className="flex items-center justify-center min-h-[80vh]">
+          <Card className="p-8 max-w-md w-full bg-white/10 backdrop-blur-sm border border-white/20">
+            <div className="text-center">
+              <Lock className="h-12 w-12 text-red-400 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-white mb-2">
+                ログインが必要です
+              </h2>
+              <p className="text-gray-300 mb-6">
+                {getPermissionErrorMessage()}
+              </p>
+              <Button 
+                onClick={() => window.location.href = '/login'}
+                className="w-full"
+              >
+                ログインページへ
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // admin権限チェック
+  if (!isAdmin()) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-800 to-gray-900">
+        <AdminHeader />
+        <div className="flex items-center justify-center min-h-[80vh]">
+          <Card className="p-8 max-w-md w-full bg-white/10 backdrop-blur-sm border border-white/20">
+            <div className="text-center">
+              <AlertCircle className="h-12 w-12 text-amber-400 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-white mb-2">
+                アクセス権限がありません
+              </h2>
+              <p className="text-gray-300 mb-6">
+                {getPermissionErrorMessage('admin')}
+              </p>
+              <Button 
+                onClick={() => window.location.href = '/dashboard'}
+                variant="outline"
+                className="w-full"
+              >
+                ダッシュボードに戻る
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-800 to-gray-900">
+      <AdminHeader />
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -247,12 +329,6 @@ export default function UsersPage() {
                 className="px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg text-white hover:from-green-700 hover:to-emerald-700 transition-all duration-300"
               >
                 + 新規作成
-              </Link>
-              <Link
-                href="/"
-                className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg text-white hover:from-purple-700 hover:to-blue-700 transition-all duration-300"
-              >
-                ← ホームに戻る
               </Link>
             </div>
           </div>

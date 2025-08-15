@@ -3,6 +3,25 @@
 
 package types
 
+type AddOrgMemberReq struct {
+	OrgId    int64  `path:"id"`
+	UserId   int64  `json:"user_id"`
+	RoleName string `json:"role_name"` // "admin", "member" など
+}
+
+type CommonRes struct {
+	Message string `json:"message"`
+	Success bool   `json:"success"`
+}
+
+type CreateOrgReq struct {
+	Name string `json:"name" validate:"required,min=2,max=100"`
+}
+
+type GetOrgReq struct {
+	Id int64 `path:"id"`
+}
+
 type LoginReq struct {
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required"`
@@ -11,6 +30,14 @@ type LoginReq struct {
 type LoginRes struct {
 	AccessToken string `json:"access_token"`
 	ExpireTime  int64  `json:"expire_time"`
+}
+
+type Org struct {
+	Id        int64  `json:"id"`
+	Name      string `json:"name"`
+	OwnerId   int64  `json:"owner_id"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 type RegisterReq struct {
@@ -25,12 +52,22 @@ type RegisterRes struct {
 	Email string `json:"email"`
 }
 
+type RemoveOrgMemberReq struct {
+	OrgId  int64 `path:"id"`
+	UserId int64 `path:"userId"`
+}
+
 type Request struct {
 	Name string `path:"name,optional,default=you"`
 }
 
 type Response struct {
 	Message string `json:"message"`
+}
+
+type UpdateOrgReq struct {
+	Id   int64  `path:"id"`
+	Name string `json:"name" validate:"required,min=2,max=100"`
 }
 
 type UserCreateReq struct {

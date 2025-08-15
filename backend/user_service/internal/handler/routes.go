@@ -6,6 +6,7 @@ package handler
 import (
 	"net/http"
 
+	org "user_service/internal/handler/org"
 	"user_service/internal/svc"
 
 	"github.com/zeromicro/go-zero/rest"
@@ -67,5 +68,47 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
 		rest.WithPrefix("/api"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				Method:  http.MethodPost,
+				Path:    "/orgs",
+				Handler: org.CreateOrgHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/orgs",
+				Handler: org.ListMyOrgsHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/orgs/:id",
+				Handler: org.GetOrgHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPut,
+				Path:    "/orgs/:id",
+				Handler: org.UpdateOrgHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodDelete,
+				Path:    "/orgs/:id",
+				Handler: org.DeleteOrgHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/orgs/:id/members",
+				Handler: org.AddOrgMemberHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodDelete,
+				Path:    "/orgs/:id/members/:userId",
+				Handler: org.RemoveOrgMemberHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/v1"),
 	)
 }

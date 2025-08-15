@@ -65,7 +65,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-800 to-gray-900">
+    <div className="relative">
       {/* Background Effects */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full filter blur-3xl"></div>
@@ -73,17 +73,10 @@ export default function DashboardPage() {
       </div>
 
       <div className="relative z-10 container mx-auto p-6 space-y-8">
-        {/* ヘッダー */}
+        {/* ページヘッダー */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pt-8">
           <div>
             <div className="flex items-center gap-4 mb-3">
-              <Link 
-                href="/"
-                className="inline-flex items-center px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl backdrop-blur-sm transition-all duration-300 text-white hover:text-blue-300 group"
-              >
-                <Home className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
-                <span className="font-medium">トップページ</span>
-              </Link>
               <div className="inline-flex items-center px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full backdrop-blur-sm">
                 <span className="text-blue-400 text-xs font-medium">🚀 REAL-TIME MONITORING</span>
               </div>

@@ -154,3 +154,90 @@ service UserService {
 	post /user/profile (Request) returns (Response)
 }
 
+// ======== 組織管理 型定義 ========
+
+type (
+    // 組織情報
+    Org {
+        Id        int64  `json:"id"`
+        Name      string `json:"name"`
+        OwnerId   int64  `json:"owner_id"`
+        CreatedAt string `json:"created_at"`
+        UpdatedAt string `json:"updated_at"`
+    }
+
+    // 組織作成リクエスト
+    CreateOrgReq {
+        Name      string `json:"name" validate:"required,min=2,max=100"`
+    }
+
+    // 組織取得リクエスト
+    GetOrgReq {
+        Id        int64 `path:"id"`
+    }
+    
+    // 組織更新リクエスト
+    UpdateOrgReq {
+        Id        int64  `path:"id"`
+        Name      string `json:"name" validate:"required,min=2,max=100"`
+    }
+    
+    // 組織メンバー追加リクエスト
+    AddOrgMemberReq {
+        OrgId     int64 `path:"id"`
+        UserId    int64 `json:"user_id"`
+        RoleName  string `json:"role_name"` // "admin", "member" など
+    }
+    
+    // 組織メンバー削除リクエスト
+    RemoveOrgMemberReq {
+        OrgId     int64 `path:"id"`
+        UserId    int64 `path:"userId"`
+    }
+)
+
+
+// ======== 組織管理 API エンドポイント定義 ========
+
+type (
+    CommonRes {
+        Message     string `json:"message"`
+        Success     bool   `json:"success"`
+    }
+)
+
+@server(
+    prefix: /api/v1
+    group: org
+    jwt: Auth
+)
+service UserService {
+    // 組織の作成 (認証ユーザーがオーナーになる)
+    @handler createOrg
+    post /orgs (CreateOrgReq) returns (Org)
+
+    // 自分が所属する組織一覧の取得
+    @handler listMyOrgs
+    get /orgs returns ([]Org)
+
+    // 特定の組織情報の取得
+    @handler getOrg
+    get /orgs/:id (GetOrgReq) returns (Org)
+    
+    // 組織情報の更新 (組織オーナー or システム管理者)
+    @handler updateOrg
+    put /orgs/:id (UpdateOrgReq) returns (Org)
+    
+    // 組織の削除 (組織オーナー or システム管理者)
+    @handler deleteOrg
+    delete /orgs/:id (GetOrgReq) returns (CommonRes)
+    
+    // 組織へのメンバー追加 (組織管理者)
+    @handler addOrgMember
+    post /orgs/:id/members (AddOrgMemberReq) returns (CommonRes)
+    
+    // 組織メンバーの削除 (組織管理者)
+    @handler removeOrgMember
+    delete /orgs/:id/members/:userId (RemoveOrgMemberReq) returns (CommonRes)
+}
+

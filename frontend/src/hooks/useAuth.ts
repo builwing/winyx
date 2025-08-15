@@ -6,6 +6,7 @@ export interface User {
   id: number;
   name: string;
   email: string;
+  roles: string[];
 }
 
 export const useAuth = () => {
@@ -13,28 +14,49 @@ export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    // ページロード時にローカルストレージからトークンを確認
-    const storedToken = localStorage.getItem('access_token');
-    const storedUser = localStorage.getItem('user');
+    // ハイドレーション完了フラグを設定
+    setHydrated(true);
     
-    if (storedToken) {
-      setToken(storedToken);
-      setIsLoggedIn(true);
+    // ページロード時にローカルストレージからトークンを確認
+    try {
+      const storedToken = localStorage.getItem('access_token');
+      const storedUser = localStorage.getItem('user');
       
-      if (storedUser) {
-        try {
-          setUser(JSON.parse(storedUser));
-        } catch (e) {
-          console.error('Failed to parse stored user data:', e);
-          localStorage.removeItem('user');
+      if (storedToken) {
+        setToken(storedToken);
+        setIsLoggedIn(true);
+        
+        if (storedUser) {
+          try {
+            setUser(JSON.parse(storedUser));
+          } catch (e) {
+            console.error('Failed to parse stored user data:', e);
+            localStorage.removeItem('user');
+          }
         }
       }
+    } catch (e) {
+      // localStorage が利用できない場合（SSR等）は何もしない
+      console.warn('localStorage not available:', e);
     }
     
     setLoading(false);
   }, []);
+
+  // ハイドレーション前は常にローディング状態を返す
+  if (!hydrated) {
+    return {
+      isLoggedIn: false,
+      user: null,
+      token: null,
+      loading: true,
+      login: async () => ({ success: false, error: 'Not hydrated' }),
+      logout: () => {},
+    };
+  }
 
   const login = async (email: string, password: string) => {
     try {
@@ -58,11 +80,12 @@ export const useAuth = () => {
       setToken(accessToken);
       setIsLoggedIn(true);
 
-      // ユーザー情報を取得（簡易版）
+      // ユーザー情報を取得（ロール情報含む）
       const mockUser = {
         id: 1,
         name: email.split('@')[0],
         email: email,
+        roles: ['admin'], // TODO: 実際のAPIからロール情報を取得
       };
       
       localStorage.setItem('user', JSON.stringify(mockUser));

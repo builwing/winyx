@@ -32,3 +32,43 @@ export interface UserInfoRes {
   email: string;
 }
 
+/**
+ * Organization Management APIs
+ */
+export interface Org {
+  id: number;
+  name: string;
+  owner_id: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateOrgReq {
+  name: string;
+}
+
+export interface GetOrgReq {
+  id: number;
+}
+
+export interface UpdateOrgReq {
+  id: number;
+  name: string;
+}
+
+export interface AddOrgMemberReq {
+  org_id: number;
+  user_id: number;
+  role_name: string;
+}
+
+export interface RemoveOrgMemberReq {
+  org_id: number;
+  user_id: number;
+}
+
+export interface CommonRes {
+  message: string;
+  success: boolean;
+}
+
