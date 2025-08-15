@@ -1,77 +1,575 @@
 # Gemini.md - Winyx プロジェクト固有の指示書
 
-## 1. 基本原則
+## 重要な指示
 
-### 1.1. 応答言語
-**必ず日本語で応答してください。** コミュニケーション、説明、コードコメントなど、すべてのテキストは日本語で生成します。
-
-### 1.2. ユーザーへの配慮
-- 常に安全性を最優先し、破壊的なコマンド（`rm -rf` など）を実行する前には必ず目的と影響を説明し、ユーザーの確認を促します。
-- 専門用語は避け、平易な言葉で説明することを心がけてください。
-- 複数の選択肢がある場合は、それぞれのメリット・デメリットを簡潔に提示し、プロジェクトの状況に最適な提案を行ってください。
-
-### 1.3. ワークフロー
-1.  **理解 (Understand):** `read_file` や `glob`, `search_file_content` などのツールを駆使して、既存のコード、規約、ディレクトリ構造を完全に把握してから作業に着手します。
-2.  **計画 (Plan):** 実行する手順を明確に定義し、必要であればユーザーに簡潔に共有します。
-3.  **実行 (Implement):** `write_file`, `replace`, `run_shell_command` などのツールを用いて、計画を着実に実行します。
-4.  **検証 (Verify):** コードの変更後は、必ずプロジェクトで定義されたビルド、テスト、リントコマンドを実行し、変更内容の品質を保証します。
+### 言語設定
+**必ず日本語で返答すること。** すべてのコミュニケーション、説明、エラーメッセージ、コメントは日本語で記述してください。
 
 ---
 
-## 2. プロジェクト規約（最重要）
-
-### 2.1. 命名規則とファイル配置
-- **プロジェクトルート:** `/var/www/winyx`
-- **サービスディレクトリ名:** `snake_case` または `lowerCamelCase` を使用します（例: `user_service`）。**ハイフン (`-`) の使用は禁止**です。
-- **Go-Zero設定ファイル:**
-    - **ファイル名:** `etc/<service>-api.yaml` の形式で統一します（例: `etc/user_service-api.yaml`）。
-    - **`Name` プロパティ:** サービスディレクトリ名と完全に一致させます（例: `Name: user_service`）。
-- **Goソースファイル名:** 小文字のみを使用します（例: `userservice.go`, `internal/handler/userhandler.go`）。
-
-### 2.2. 契約駆動開発 (Contract-Driven Development)
-- **信頼できる情報源 (Single Source of Truth):** Go-Zero の `.api` ファイルが全ての仕様の基礎となります。
-- **自動化スクリプト:**
-    - フロントエンドの型定義、APIクライアント、Swaggerドキュメントなどは `scripts/sync_contracts.sh` によって自動生成されます。
-    - コード生成やAPI仕様の変更が必要な場合は、まず `.api` ファイルを編集し、このスクリプトを実行することを検討してください。
+## 0. ゴール
+- 初学者にも分かる説明を徹底し、**先走らず**に常に *複数の選択肢（A/B...）と採用理由* を示す。
+- すべてのコード断片・コマンドの直前に、**チェックボックス付きの簡潔な説明**を置く（進捗が見えるように）。
+- Winyxの**命名規約と配置規約**を守り、同じ表記を全ドキュメント・コードに反映する。
+- 返答は日本語。端末操作の説明は **vim 前提**（nanoは不可）。
+- sudo権限の必要な処理は、どのような処理を行うのかを示して、私に頼んで下さい。
 
 ---
 
-## 3. 技術スタックと環境
+## 1. 返答のフォーマット規則（厳守）
+- 各コードの**直前**に最小限のチェックリストを置く：
 
-- **OS:** Ubuntu 24.04 LTS
-- **データベース:** MariaDB (`winyx_core`), Redis
-- **バックエンド:** Go 1.22+ (Go-Zero フレームワーク)
-- **フロントエンド:** Next.js 15 (TypeScript, Tailwind CSS)
-- **パッケージ管理:** `go mod` (バックエンド), `npm` (フロントエンド)
+  ```md
+  - [ ] 何をするか（1行説明）
 
----
+  ```bash
+  # 実行コマンド/コード
+  ```
+  > 目的や結果（1行メモ）
+  ```
 
-## 4. 主要コマンド
+- セクション構成は以下を基本とする：
+  1) 背景と選択肢（A/B/C）  
+  2) 推奨の根拠（3点以内）  
+  3) 手順（チェックボックス + コード）  
+  4) 検証/ロールバック手順  
+  5) 注意点（落とし穴）
 
-### 4.1. バックエンド (Go)
-- **依存関係の解決:** `go mod tidy`
-- **ビルド:** `go build -o <service_name>`
-- **テスト:** `go test ./...`
-- **サービスの起動 (例):** `./user_service -f etc/user_service-api.yaml`
-- **`goctl` の利用:**
-    - **ツールインストール:** `go install github.com/zeromicro/go-zero/tools/goctl@latest`
-    - **モデル生成 (キャッシュ有効):** `goctl model mysql ddl -src ../../contracts/api/schema.sql -dir ./internal/model -c`
-
-### 4.2. フロントエンド (Next.js)
-- **依存関係のインストール:** `npm install`
-- **開発サーバー起動:** `npm run dev`
-- **ビルド:** `npm run build`
-- **リント:** `npm run lint`
-
-### 4.3. データベースとキャッシュ
-- **MariaDB 接続確認:** `mariadb -h 127.0.0.1 -u winyx_app -p -D winyx_core -e "SELECT NOW();"`
-- **Redis 接続確認:** `redis-cli ping` (応答が `PONG` なら正常)
+- **vim操作**の例示を優先（`:wq`, 検索置換 `:%s/old/new/g` 等）。
 
 ---
 
-## 5. 注意事項とベストプラクティス
+## 2. プロジェクト情報
 
-- **機微情報:** データベースのパスワードなどの機微情報は、YAMLファイルに直接記述せず、systemdの `EnvironmentFile` 機能などを活用して外部から注入することを推奨します。
-- **Go-Zeroサービス名:** サービス名にハイフンを使用すると、生成されるコードのimportパスに問題が生じるため、絶対に使用しないでください。
-- **APIリクエストのデフォルト値:** `.api` ファイルの `path` タグでデフォルト値を設定しても無視される可能性があるため、Goのロジック側で未入力時の値を補完する実装を行ってください。
-- **ドキュメント:** `docs/` ディレクトリ内のドキュメント体系、特に章番号の構成を尊重し、変更を加える際は既存の構造に従ってください。
+### プロジェクト概要
+Winyxは契約駆動開発（Contract-First）を採用し、バックエンドをVPS上で稼働させ、フロントエンドはローカルPCで開発・ビルド後にVPSへデプロイする構成ですが、VPS上で、開発してビルドすることも可能。契約ファイル（.api/.proto）を単一ソースとして集中管理し、CI/CDパイプラインで型定義、SDK、ドキュメント、モックを自動生成して配布します。
+
+### リポジトリ構造
+- `/var/www/winyx` - プロジェクトルートディレクトリ
+- `backend/` - Go-Zeroによるサービス実装
+  - `test_api/` - テストAPIサービス (Go-Zero)
+- `frontend/` - ビルド済み静的ファイル（Next.js出力）
+- `contracts/` - 契約ファイルの管理リポジトリ
+  - `api/` - .api（REST契約定義）とDDLスキーマ
+  - `rpc/` - .proto（gRPC契約定義）
+- `scripts/` - セットアップスクリプトや管理用ツール
+- `docs/` - プロジェクトドキュメント
+- `.env` - 環境変数設定ファイル（Git管理外）
+- `.env.example` - 環境変数テンプレート
+
+### 命名とファイル配置（Winyx標準）
+- **サービス名**：`snake_case` または `lowerCamel`。**ハイフン禁止**（例：`user_service` はOK、`user-service` はNG）。
+- **YAMLの Name:** は **サービス名と同一**（例：`Name: user_service`）。
+- **設定ファイル名**：`etc/<service>-api.yaml` を推奨（例：`etc/user_service-api.yaml`）。
+- **サービスディレクトリ**：`/var/www/winyx/backend/` 配下に `<service_name>` で作成（例：`user_service`, `order_service`）。
+- **systemdサービス名**：`winyx-<service>.service` 形式（例：`winyx-user.service`, `winyx-order.service`）。
+- **VPS 配置**：`/var/www/winyx/` 配下（`backend/`, `frontend/`, `contracts/`）。
+
+### 開発・デプロイフロー
+```
+[ローカル開発環境]
+├── フロントエンド（Next.js）: コーディング → ビルド → 静的ファイル生成
+├── 契約ファイル編集（.api/.proto）: コミット → CIで自動生成
+└── 生成物（型/SDK/ドキュメント/モック）をnpmや静的配信でフロントへ配布
+
+[VPS本番環境（/var/www/winyx）]
+├── frontend/（ビルド済み静的ファイルをNginxで配信）
+├── backend/（Go-Zeroサービス群: REST APIやRPCサービスをsystemdで常駐）
+└── contracts/（契約ファイルの管理リポジトリ）
+```
+
+---
+
+## 3. 開発環境
+
+### バージョンと環境前提
+- OS: Ubuntu 24.04 LTS
+- Timezone: Asia/Tokyo
+- DB: MariaDB（`winyx_core`）、Redis（ローカル）
+- Go version: 1.24+
+- Framework: Go-Zero + goctl (最新)
+- フロント：Next.js 15（VPSにはビルド結果のみ配置）
+- Cache: Redis
+
+### コーディング規約
+- Goファイル名は小文字のみを使用（例: `loginhandler.go`、`servicecontext.go`）
+- ケースセンシティブなファイルシステムでの動作を前提とする
+
+---
+
+## 4. 契約駆動開発（Contract-First Development）**【厳守】**
+
+### 4.0 **絶対原則：Contract-First + Go-Zero自動生成**
+- **絶対に守る**：すべてのAPIは**契約ファイル（.api）を先に作成**してから実装
+- **手動実装禁止**：`goctl api generate`を使わない手動実装は**一切禁止**
+- **単一情報源**：`/var/www/winyx/contracts/`を**唯一の契約管理場所**とする
+
+### 4.1 **必須ワークフロー**
+```bash
+# 1. 契約ファイル作成・更新（必須）
+vim /var/www/winyx/contracts/<service_name>/<service>.api
+
+# 2. Go-Zero自動生成（必須）
+cd /var/www/winyx/backend/<service_name>
+goctl api go -api /var/www/winyx/contracts/<service_name>/<service>.api -dir . -style go_zero
+
+# 3. 生成されたファイルにビジネスロジックを追加
+# internal/logic/ 内のファイルのみ編集可能
+
+# 4. 契約同期スクリプト実行（必須）
+/var/www/winyx/scripts/sync_contracts.sh
+```
+
+### 4.2 **編集可能ファイル制限**
+- ✅ **編集可能**：`internal/logic/` - ビジネスロジックのみ
+- ✅ **編集可能**：`etc/` - 設定ファイル
+- ❌ **編集禁止**：`internal/handler/` - 自動生成のため
+- ❌ **編集禁止**：`internal/types/` - 自動生成のため
+- ❌ **編集禁止**：`routes.go` - 自動生成のため
+
+### 4.3 **契約ファイル命名規則**
+- **場所**：`/var/www/winyx/contracts/<service_name>/<service>.api`
+- **例**：`/var/www/winyx/contracts/user_service/user.api`
+- **スタイル**：`go_zero`形式で統一
+
+---
+
+## 5. よくある判断（先に結論 → 根拠）
+
+### 5.1 go-zero 導入コマンド
+- **結論**：
+  - プロジェクトの依存として go-zero を入れる → `go get github.com/zeromicro/go-zero@latest`
+  - CLI（goctl）は**実行バイナリ**として入れる → `go install github.com/zeromicro/go-zero/tools/goctl@latest`
+- **根拠**：`go get` はモジュール依存（`go.mod`）を更新、`go install` は `$GOBIN` にツール配置。役割が異なる。
+
+### 5.2 サービス名と YAML Name の統一
+- **結論**：`user_service`（ディレクトリ） ⇄ `Name: user_service`（YAML）で**完全一致**させる。
+- **理由**：監視・systemd・ログ、OpenAPI名寄せの混乱を防ぐ／チーム内検索のヒット率を上げる。
+
+### 5.3 設定ファイル名の統一
+- **結論**：`etc/<service>-api.yaml`（例：`etc/user_service-api.yaml`）で統一。
+- **理由**：goctl 生成物の慣習に沿いつつ、人間可読性（どのサービスの API 設定か即分かる）。
+
+---
+
+## 6. テストとビルド
+- ビルドコマンド: `go build`
+- テストコマンド: `go test ./...`
+- 型チェック（フロントエンド）: `npm run type-check`
+- リント: `npm run lint`
+
+### サービス管理
+- systemdサービス名: `winyx-test-api.service`
+- 設定ファイル: `etc/test_api-api.yaml`
+
+---
+
+## 7. 作業テンプレート
+
+### 7.1 「選択肢 → 手順 → 検証」テンプレート（雛形）
+**A/B/C の提示と採用理由を先に書く。**
+
+- [ ] A案（推奨）：〜〜 / B案：〜〜 / C案：〜〜（採用理由を3点以内で）
+
+```md
+- [ ] 手順 1（何をするか）
+
+```bash
+# コマンド
+```
+
+- [ ] 手順 2（何をするか）
+
+```bash
+# コマンド
+```
+> 検証：curl / health など1行
+```
+
+### 7.2 Go-Zero：最小サービスの生成と起動
+- [ ] サービス雛形を生成（ハイフン不可）
+
+```bash
+cd /var/www/winyx/backend
+goctl api new test_api
+cd test_api
+```
+
+- [ ] types/logic を JSON返却に修正（自動 or vim）
+
+```bash
+# types.go の最小例
+cat > internal/types/types.go <<'EOF'
+package types
+
+type Request struct {
+    Name string `path:"name"` // ※デフォルト値はロジック側で補う
+}
+type Response struct {
+    Message string `json:"message"`
+}
+EOF
+```
+
+> 目的：文字列を JSON で返す基本挙動を固定
+
+- [ ] 依存解決とビルド
+
+```bash
+go mod tidy
+go build -o test_api
+```
+
+- [ ] 設定ファイルを作成（統一命名）
+
+```bash
+mkdir -p etc
+cat > etc/test_api-api.yaml <<'YAML'
+Name: test_api
+Host: 0.0.0.0
+Port: 8888
+
+Mysql:
+  DataSource: "winyx_app:YOUR_DB_PASSWORD@tcp(127.0.0.1:3306)/winyx_core?charset=utf8mb4&parseTime=true&loc=Asia%2FTokyo"
+
+Cache:
+  - Host: 127.0.0.1:6379
+    Pass: "" # 付ける場合のみ値を設定
+YAML
+```
+
+- [ ] 起動と疎通
+
+```bash
+./test_api -f etc/test_api-api.yaml &
+PID=$!; echo $PID > /tmp/test_api.pid
+curl -s http://127.0.0.1:8888/from/you | jq . || true
+kill "$(cat /tmp/test_api.pid)"
+```
+
+> 期待：JSONで `{ "message": "Hello you!" }`
+
+---
+
+## 8. 設定・実装ガイド
+
+### 8.1 DB/Redis
+- [ ] MariaDB の疎通確認（最低限）
+
+```bash
+mariadb -h 127.0.0.1 -u winyx_app -p -D winyx_core -e "SELECT NOW() AS now, @@version AS version;"
+```
+
+- [ ] Redis の疎通確認
+
+```bash
+redis-cli -h 127.0.0.1 ping
+# → PONG（パスワードありなら -a を付与）
+```
+
+### 8.2 goctl model（キャッシュ有効）
+- [ ] DDL から model を生成（DDLスキーマは contracts/api で管理）
+
+```bash
+cd /var/www/winyx/backend/test_api
+goctl model mysql ddl -src /var/www/winyx/contracts/api/schema.sql -dir ./internal/model -c
+```
+
+### 8.3 Handler / Logic の最小構成（CRUD例）
+- [ ] ルーティング登録（5本：POST/GET/GET/LIST/DELETE）
+
+```bash
+vim /var/www/winyx/backend/test_api/internal/handler/routes.go
+# server.AddRoutes([...]) に Users の5本を追加
+```
+
+- [ ] Handler → Logic → Model の薄い三層を維持（複雑化を避ける）
+
+---
+
+## 9. ドキュメント作成の流儀
+- 「第N章 第M節 ...」の**章番号を崩さない**。草案に異なる数字が混在している場合は**この規約に従って修正**。
+- 設定ファイルの**表記ゆれを許容しない**：
+  - **Name** は `test_api` 固定
+  - **設定ファイル名**は `test_api-api.yaml` 固定
+  - 本文内に `testapi_api.yaml` / `testapi-api.yaml` の両方が現れた場合は **前者に統一**ではなく、本規約（`test_api-api.yaml`）へ合わせる。
+
+---
+
+## 10. 安全策・落とし穴
+- **サービス名ハイフン**は生成済みコードの import path に齟齬を生む。必ず snake_case。
+- **path タグのデフォルト値**はパーサにより無視されることがあるため、**ロジック側で空文字を補完**する。
+- **機微情報**は YAML に直書きせず、環境変数（`.env`ファイル）または `/etc/winyx.d/<service>.env` ＋ systemd `EnvironmentFile=` を推奨。
+- **RESTとRPC使い分け**：外部公開APIはREST、内部高速通信はRPCを推奨。
+
+---
+
+## 11. 提案の出し方（内部ルール）
+- 同じ結果に至る手段が複数ある場合、**3件以内の選択肢**と**採用基準**（安定性/運用容易性/学習コスト等）を短く提示。
+- 初学者向けに、**落とし穴（3つ以内）**と**検証コマンド（1～2個）**を必ず添える。
+- 返信の最後に「次の一歩」を1行示す（例：*「WorkDir を systemd 化しましょう」*）。
+
+---
+
+## 12. 契約駆動開発（Contract-Driven Development）
+
+### 12.1 基本概念
+- 契約ファイル（.api/.proto）を単一の信頼できる情報源として使用
+- バックエンドとフロントエンドの仕様齟齬を防ぐ開発手法
+- RESTは `.api` → `goctl api plugin` でOpenAPIに変換
+- RPCは `.proto` → `buf`でlintおよび後方互換性チェック
+
+### 12.2 自動生成システム
+CIで以下を生成し配布：
+- TypeScript型定義とAPIクライアント（fetch/axios または gRPCクライアント）
+- Flutter/Dart用コード
+- APIドキュメント（Redoc/Swagger UI）
+- モックサーバ定義（Prism / connect dev server）
+- 契約ファイル変更時の自動同期（Git hooks連携）
+
+### 12.3 実行コマンド
+```bash
+# 手動実行
+./scripts/sync_contracts.sh
+
+# 監視モード
+./scripts/sync_contracts.sh --watch
+
+# Git hooks インストール
+./scripts/sync_contracts.sh --install-hooks
+```
+
+### 12.4 契約例
+
+#### REST契約例（.api）
+```api
+syntax = "v1";
+info(
+  title: "User Service API"
+  desc:  "User CRUD endpoints"
+)
+
+type (
+  UserResp {
+    id    int64  `json:"id"`
+    name  string `json:"name"`
+    email string `json:"email"`
+  }
+)
+
+@server(group: user)
+service user-api {
+  @doc "Get user by ID"
+  get /api/v1/users/:id returns(UserResp)
+}
+```
+
+#### RPC契約例（.proto）
+```proto
+syntax = "proto3";
+package user.v1;
+option go_package = "./pb;pb";
+
+message GetUserReq { int64 id = 1; }
+message User { int64 id = 1; string name = 2; string email = 3; }
+service UserService {
+  rpc GetUser(GetUserReq) returns (User);
+}
+```
+
+### 12.5 エラーモデル統一
+全APIで同一フォーマットを返却：
+```json
+{
+  "code": "USER_NOT_FOUND",
+  "message": "User not found",
+  "details": { "id": 123 }
+}
+```
+
+### 12.6 変更検知と安全装置
+- REST: `oasdiff --fail-on-breaking`で破壊的変更検知
+- RPC: `buf breaking`で後方互換性チェック
+- CIで違反が検出された場合はマージ不可に設定
+
+### 12.7 フロント利用手順
+1. npm経由でSDKインストール：`npm install @winyx/api-client` または `@winyx/rpc-client`
+2. 型安全な呼び出しでバックエンドAPIやRPCサービスを利用
+3. モックサーバを起動してバックエンド依存なしでUI開発可能
+
+---
+
+## 13. データベース設計戦略（Microservices DB Strategy）
+
+### 13.1 基本設計方針
+Winyxプロジェクトでは**ハイブリッド型Database per Service**パターンを採用：
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   winyx_core    │    │   winyx_task    │    │   winyx_msg     │
+│   (共通・認証)   │    │  (タスク管理)    │    │ (メッセージ)     │
+├─────────────────┤    ├─────────────────┤    ├─────────────────┤
+│ ✓ users         │    │ • tasks         │    │ • messages      │
+│ ✓ sessions      │    │ • task_assign   │    │ • channels      │
+│ ✓ user_profiles │    │ • categories    │    │ • participants  │
+│ ✓ roles         │    │ • task_history  │    │ • attachments   │
+│ ✓ permissions   │    │ • comments      │    │ • message_read  │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### 13.2 データベース分散ルール
+
+#### 📊 winyx_core（認証基盤）
+**責任範囲**: ユーザー認証・認可、セッション管理、プロフィール管理
+- 🎯 **対象サービス**: UserService、AuthService、GatewayService
+- 🔧 **接続設定**: `DataSource: "winyx:PASSWORD@tcp(127.0.0.1:3306)/winyx_core?charset=utf8mb4&parseTime=true"`
+
+#### 📋 winyx_task（タスク管理）
+**責任範囲**: タスク作成・管理、アサイン・スケジューリング、コメント・添付ファイル
+- 🎯 **対象サービス**: TaskService、ProjectService
+- 🔧 **接続設定**: `DataSource: "winyx:PASSWORD@tcp(127.0.0.1:3306)/winyx_task?charset=utf8mb4&parseTime=true"`
+
+#### 💬 winyx_mem（メッセージ管理）
+**責任範囲**: チャンネル管理、リアルタイムメッセージング、ファイル共有
+- 🎯 **対象サービス**: MessageService、NotificationService
+- 🔧 **接続設定**: `DataSource: "winyx:PASSWORD@tcp(127.0.0.1:3306)/winyx_mem?charset=utf8mb4&parseTime=true"`
+
+### 13.3 サービス間データアクセスルール
+
+#### パターン1: API呼び出し（推奨）
+```go
+// TaskServiceからUserServiceの情報取得
+type TaskService struct {
+    userClient UserServiceClient
+}
+
+func (s *TaskService) GetTaskWithUser(taskId int64) (*TaskWithUser, error) {
+    task, err := s.taskRepo.FindById(taskId)
+    if err != nil {
+        return nil, err
+    }
+    
+    // UserServiceのAPIを呼び出し
+    user, err := s.userClient.GetUser(context.Background(), task.UserId)
+    if err != nil {
+        logx.Errorf("Failed to get user info: %v", err)
+        // ユーザー情報取得失敗でもタスク情報は返却
+        return &TaskWithUser{Task: task}, nil
+    }
+    
+    return &TaskWithUser{Task: task, User: user}, nil
+}
+```
+
+#### パターン2: イベント駆動同期（キャッシュ更新）
+```go
+// ユーザー情報変更時のイベント発行
+func (l *UserUpdateLogic) UserUpdate(req *types.UserUpdateReq) error {
+    // ユーザー情報更新
+    err := l.svcCtx.UsersModel.Update(l.ctx, updatedUser)
+    if err != nil {
+        return err
+    }
+    
+    // 他サービスに変更通知（オプション）
+    l.eventBus.Publish("user.updated", UserUpdatedEvent{
+        UserId: req.UserId,
+        Name:   req.Name,
+        Email:  req.Email,
+    })
+    
+    return nil
+}
+```
+
+### 13.4 データ整合性ガイドライン
+
+#### ✅ 必須事項
+- **Foreign Key制約はサービス内のみ**：`user_profiles.user_id`は`winyx_core.users.id`を参照
+- **Cross-DB参照は避ける**：TaskServiceから直接`winyx_core.users`テーブルをJOINしない
+- **API呼び出しでデータ補完**：必要に応じてUserServiceのAPIから情報取得
+
+#### ❌ 禁止事項
+- **直接的なCross-DB JOIN**：`winyx_task.tasks JOIN winyx_core.users`
+- **複数DBにまたがるトランザクション**：分散トランザクションは複雑化の原因
+- **サービス境界を越えたForeign Key**：異なるサービスのテーブル間でのFK設定
+
+### 13.5 実装パターン例
+
+#### GoZero設定ファイル
+```yaml
+# UserService設定例
+Name: user_service
+Mysql:
+  DataSource: "winyx:Winyx&7377@tcp(127.0.0.1:3306)/winyx_core?charset=utf8mb4&parseTime=true"
+
+# TaskService設定例  
+Name: task_service
+Mysql:
+  DataSource: "winyx:Winyx&7377@tcp(127.0.0.1:3306)/winyx_task?charset=utf8mb4&parseTime=true"
+```
+
+#### サービス間クライアント
+```go
+// internal/clients/userserviceclient.go
+type UserServiceClient struct {
+    baseURL string
+    client  *http.Client
+}
+
+func (c *UserServiceClient) GetUser(ctx context.Context, userID int64) (*User, error) {
+    url := fmt.Sprintf("%s/api/v1/users/%d", c.baseURL, userID)
+    req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+    if err != nil {
+        return nil, err
+    }
+    
+    // JWT認証ヘッダー追加
+    req.Header.Set("Authorization", "Bearer "+c.getServiceToken())
+    
+    resp, err := c.client.Do(req)
+    if err != nil {
+        return nil, fmt.Errorf("user service call failed: %w", err)
+    }
+    defer resp.Body.Close()
+    
+    var result struct {
+        User User `json:"user"`
+    }
+    if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+        return nil, err
+    }
+    
+    return &result.User, nil
+}
+```
+
+### 13.6 詳細仕様参照
+マイクロサービス間の詳細なデータベース設計戦略は以下を参照：
+📄 **`docs/マイクロサービス_データベース設計戦略.md`**
+
+- Database per Serviceパターンの詳細
+- 各データベースのスキーマ設計
+- Sagaパターンによるデータ整合性保証
+- セキュリティとパフォーマンス最適化
+- マイグレーション戦略
+
+---
+
+## 付録A：vim 置換ショートカット
+
+- [ ] ドキュメント一括置換（ファイル内）
+
+```vim
+:%s/testapi_api\.yaml/test_api-api.yaml/g
+```
+
+- [ ] 章番号の置換例
+
+```vim
+:%s/^1\.6 /2.1.6 /g
+```
+
+---
+
+### 以上
