@@ -41,7 +41,7 @@
 ## 2. プロジェクト情報
 
 ### プロジェクト概要
-Winyxは契約駆動開発（Contract-First）を採用し、バックエンドをVPS上で稼働させ、フロントエンドはローカルPCで開発・ビルド後にVPSへデプロイする構成です。契約ファイル（.api/.proto）を単一ソースとして集中管理し、CI/CDパイプラインで型定義、SDK、ドキュメント、モックを自動生成して配布します。
+Winyxは契約駆動開発（Contract-First）を採用し、バックエンドをVPS上で稼働させ、フロントエンドはローカルPCで開発・ビルド後にVPSへデプロイする構成ですが、VPS上で、開発してビルドすることも可能。契約ファイル（.api/.proto）を単一ソースとして集中管理し、CI/CDパイプラインで型定義、SDK、ドキュメント、モックを自動生成して配布します。
 
 ### リポジトリ構造
 - `/var/www/winyx` - プロジェクトルートディレクトリ
@@ -96,25 +96,62 @@ Winyxは契約駆動開発（Contract-First）を採用し、バックエンド�
 
 ---
 
-## 4. よくある判断（先に結論 → 根拠）
+## 4. 契約駆動開発（Contract-First Development）**【厳守】**
 
-### 4.1 go-zero 導入コマンド
+### 4.0 **絶対原則：Contract-First + Go-Zero自動生成**
+- **絶対に守る**：すべてのAPIは**契約ファイル（.api）を先に作成**してから実装
+- **手動実装禁止**：`goctl api generate`を使わない手動実装は**一切禁止**
+- **単一情報源**：`/var/www/winyx/contracts/`を**唯一の契約管理場所**とする
+
+### 4.1 **必須ワークフロー**
+```bash
+# 1. 契約ファイル作成・更新（必須）
+vim /var/www/winyx/contracts/<service_name>/<service>.api
+
+# 2. Go-Zero自動生成（必須）
+cd /var/www/winyx/backend/<service_name>
+goctl api go -api /var/www/winyx/contracts/<service_name>/<service>.api -dir . -style go_zero
+
+# 3. 生成されたファイルにビジネスロジックを追加
+# internal/logic/ 内のファイルのみ編集可能
+
+# 4. 契約同期スクリプト実行（必須）
+/var/www/winyx/scripts/sync_contracts.sh
+```
+
+### 4.2 **編集可能ファイル制限**
+- ✅ **編集可能**：`internal/logic/` - ビジネスロジックのみ
+- ✅ **編集可能**：`etc/` - 設定ファイル
+- ❌ **編集禁止**：`internal/handler/` - 自動生成のため
+- ❌ **編集禁止**：`internal/types/` - 自動生成のため
+- ❌ **編集禁止**：`routes.go` - 自動生成のため
+
+### 4.3 **契約ファイル命名規則**
+- **場所**：`/var/www/winyx/contracts/<service_name>/<service>.api`
+- **例**：`/var/www/winyx/contracts/user_service/user.api`
+- **スタイル**：`go_zero`形式で統一
+
+---
+
+## 5. よくある判断（先に結論 → 根拠）
+
+### 5.1 go-zero 導入コマンド
 - **結論**：
   - プロジェクトの依存として go-zero を入れる → `go get github.com/zeromicro/go-zero@latest`
   - CLI（goctl）は**実行バイナリ**として入れる → `go install github.com/zeromicro/go-zero/tools/goctl@latest`
 - **根拠**：`go get` はモジュール依存（`go.mod`）を更新、`go install` は `$GOBIN` にツール配置。役割が異なる。
 
-### 4.2 サービス名と YAML Name の統一
-- **結論**：`test_api`（ディレクトリ） ⇄ `Name: test_api`（YAML）で**完全一致**させる。
+### 5.2 サービス名と YAML Name の統一
+- **結論**：`user_service`（ディレクトリ） ⇄ `Name: user_service`（YAML）で**完全一致**させる。
 - **理由**：監視・systemd・ログ、OpenAPI名寄せの混乱を防ぐ／チーム内検索のヒット率を上げる。
 
-### 4.3 設定ファイル名の統一
-- **結論**：`etc/<service>-api.yaml`（例：`etc/test_api-api.yaml`）で統一。
+### 5.3 設定ファイル名の統一
+- **結論**：`etc/<service>-api.yaml`（例：`etc/user_service-api.yaml`）で統一。
 - **理由**：goctl 生成物の慣習に沿いつつ、人間可読性（どのサービスの API 設定か即分かる）。
 
 ---
 
-## 5. テストとビルド
+## 6. テストとビルド
 - ビルドコマンド: `go build`
 - テストコマンド: `go test ./...`
 - 型チェック（フロントエンド）: `npm run type-check`
@@ -126,7 +163,7 @@ Winyxは契約駆動開発（Contract-First）を採用し、バックエンド�
 
 ---
 
-## 6. Claude Code 作業テンプレート
+## 7. Claude Code 作業テンプレート
 
 ### 6.1 「選択肢 → 手順 → 検証」テンプレート（雛形）
 **A/B/C の提示と採用理由を先に書く。**
