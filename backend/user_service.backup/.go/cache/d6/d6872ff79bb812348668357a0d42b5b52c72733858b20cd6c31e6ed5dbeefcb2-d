@@ -1,7 +1,0 @@
-./deleteaccountlogic.go
-./getprofilelogic.go
-./loginlogic.go
-./logoutlogic.go
-./registerlogic.go
-./updateprofilelogic.go
-./updateuserprofilelogic.go
