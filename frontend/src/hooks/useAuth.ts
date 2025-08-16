@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { apiRequest } from '@/lib/api/client';
 
 export interface User {
   id: number;
@@ -28,6 +29,8 @@ export const useAuth = () => {
       if (storedToken) {
         setToken(storedToken);
         setIsLoggedIn(true);
+        // APIクライアントにトークンを設定
+        apiRequest.setAuthToken(storedToken);
         
         if (storedUser) {
           try {
@@ -79,6 +82,8 @@ export const useAuth = () => {
       localStorage.setItem('access_token', accessToken);
       setToken(accessToken);
       setIsLoggedIn(true);
+      // APIクライアントにトークンを設定
+      apiRequest.setAuthToken(accessToken);
 
       // ユーザー情報を取得（ロール情報含む）
       const mockUser = {
@@ -110,6 +115,9 @@ export const useAuth = () => {
     setToken(null);
     setUser(null);
     setIsLoggedIn(false);
+    
+    // APIクライアントからトークンをクリア
+    apiRequest.clearAuthToken();
   };
 
   return {

@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import ClientOnly from '@/components/ClientOnly';
 
 export default function Home() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -38,26 +39,28 @@ export default function Home() {
             <a href="/dashboard" className="hover:text-purple-400 transition-colors">ダッシュボード</a>
             <a href="/users" className="hover:text-purple-400 transition-colors">ユーザー管理</a>
             
-            {loading ? (
-              <div className="ml-4 px-4 py-2">読み込み中...</div>
-            ) : isLoggedIn ? (
-              <div className="ml-4 flex items-center space-x-3">
-                <span className="text-gray-300">こんにちは、{user?.name || user?.email}さん</span>
-                <button 
-                  onClick={logout}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-300 font-medium"
+            <ClientOnly fallback={<div className="ml-4 px-4 py-2">読み込み中...</div>}>
+              {loading ? (
+                <div className="ml-4 px-4 py-2">読み込み中...</div>
+              ) : isLoggedIn ? (
+                <div className="ml-4 flex items-center space-x-3">
+                  <span className="text-gray-300">こんにちは、{user?.name || user?.email}さん</span>
+                  <button 
+                    onClick={logout}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-300 font-medium"
+                  >
+                    ログアウト
+                  </button>
+                </div>
+              ) : (
+                <a 
+                  href="/login" 
+                  className="ml-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-300 font-medium"
                 >
-                  ログアウト
-                </button>
-              </div>
-            ) : (
-              <a 
-                href="/login" 
-                className="ml-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-300 font-medium"
-              >
-                ログイン
-              </a>
-            )}
+                  ログイン
+                </a>
+              )}
+            </ClientOnly>
           </div>
           
           {/* Mobile Menu Button */}
@@ -84,28 +87,30 @@ export default function Home() {
               <a href="/dashboard" className="text-gray-300 hover:text-purple-400 transition-colors">ダッシュボード</a>
               <a href="/users" className="text-gray-300 hover:text-purple-400 transition-colors">ユーザー管理</a>
               
-              {loading ? (
-                <div className="mt-2 px-4 py-2 text-center text-gray-300">読み込み中...</div>
-              ) : isLoggedIn ? (
-                <div className="mt-2 space-y-2">
-                  <div className="px-4 py-2 text-gray-300 text-center">
-                    こんにちは、{user?.name || user?.email}さん
+              <ClientOnly fallback={<div className="mt-2 px-4 py-2 text-center text-gray-300">読み込み中...</div>}>
+                {loading ? (
+                  <div className="mt-2 px-4 py-2 text-center text-gray-300">読み込み中...</div>
+                ) : isLoggedIn ? (
+                  <div className="mt-2 space-y-2">
+                    <div className="px-4 py-2 text-gray-300 text-center">
+                      こんにちは、{user?.name || user?.email}さん
+                    </div>
+                    <button 
+                      onClick={logout}
+                      className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-300 font-medium"
+                    >
+                      ログアウト
+                    </button>
                   </div>
-                  <button 
-                    onClick={logout}
-                    className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-300 font-medium"
+                ) : (
+                  <a 
+                    href="/login" 
+                    className="mt-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-300 font-medium text-center"
                   >
-                    ログアウト
-                  </button>
-                </div>
-              ) : (
-                <a 
-                  href="/login" 
-                  className="mt-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-300 font-medium text-center"
-                >
-                  ログイン
-                </a>
-              )}
+                    ログイン
+                  </a>
+                )}
+              </ClientOnly>
             </div>
           </div>
         )}

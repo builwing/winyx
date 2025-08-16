@@ -1,0 +1,235 @@
+syntax = "v1"
+
+info (
+	title:   "Winyx User Service API"
+	desc:    "ユーザー管理マイクロサービス - 認証・ユーザーCRUD・プロフィール・ロール管理"
+	author:  "Winyx Team"
+	version: "v1.0"
+)
+
+// ======== 共通型定義 ========
+type (
+	UserProfileData {
+		Bio         string `json:"bio,optional"`
+		Phone       string `json:"phone,optional"`
+		Address     string `json:"address,optional"`
+		BirthDate   string `json:"birth_date,optional"`
+		Gender      string `json:"gender,optional"`
+		Occupation  string `json:"occupation,optional"`
+		Website     string `json:"website,optional"`
+		SocialLinks string `json:"social_links,optional"`
+	}
+	UserInfo {
+		UserId    int64            `json:"user_id"`
+		Name      string           `json:"name"`
+		Email     string           `json:"email"`
+		Status    string           `json:"status"`
+		Roles     []string         `json:"roles,omitempty"`
+		Profile   *UserProfileData `json:"profile,omitempty"`
+		CreatedAt string           `json:"created_at"`
+		UpdatedAt string           `json:"updated_at"`
+	}
+)
+
+// ======== 認証API ========
+type (
+	LoginReq {
+		Email    string `json:"email" validate:"required,email"`
+		Password string `json:"password" validate:"required"`
+	}
+	LoginRes {
+		AccessToken string `json:"access_token"`
+		ExpireTime  int64  `json:"expire_time"`
+	}
+	RegisterReq {
+		Name     string `json:"name" validate:"required,min=2,max=50"`
+		Email    string `json:"email" validate:"required,email"`
+		Password string `json:"password" validate:"required,min=6"`
+	}
+	RegisterRes {
+		Id    int64  `json:"id"`
+		Name  string `json:"name"`
+		Email string `json:"email"`
+	}
+)
+
+// ======== ユーザー管理API ========
+type (
+	UserListReq {
+		Page  int64 `form:"page,optional,default=1"`
+		Limit int64 `form:"limit,optional,default=10"`
+	}
+	UserListRes {
+		Users []UserInfo `json:"users"`
+		Total int64      `json:"total"`
+		Page  int64      `json:"page"`
+		Limit int64      `json:"limit"`
+	}
+	UserDetailReq {
+		UserId int64 `path:"id"`
+	}
+	UserDetailRes {
+		User UserInfo `json:"user"`
+	}
+	UserCreateReq {
+		Name     string           `json:"name" validate:"required"`
+		Email    string           `json:"email" validate:"required,email"`
+		Password string           `json:"password" validate:"required,min=6"`
+		Status   string           `json:"status,optional"`
+		Roles    []string         `json:"roles,optional"`
+		Profile  *UserProfileData `json:"profile,optional"`
+	}
+	UserCreateRes {
+		User UserInfo `json:"user"`
+	}
+	UserUpdateReq {
+		UserId  int64            `path:"id"`
+		Name    string           `json:"name" validate:"required"`
+		Email   string           `json:"email" validate:"required,email"`
+		Status  string           `json:"status,optional"`
+		Roles   []string         `json:"roles,optional"`
+		Profile *UserProfileData `json:"profile,optional"`
+	}
+	UserUpdateRes {
+		User UserInfo `json:"user"`
+	}
+	UserDeleteReq {
+		UserId int64 `path:"id"`
+	}
+	UserDeleteRes {
+		Message string `json:"message"`
+	}
+)
+
+// ======== プロフィール管理API ========
+type (
+	Request {
+		Name string `path:"name,optional,default=you"`
+	}
+	Response {
+		Message string `json:"message"`
+	}
+	UserInfoRes {
+		Id    int64  `json:"id"`
+		Name  string `json:"name"`
+		Email string `json:"email"`
+	}
+)
+
+// ======== サービス定義 ========
+// 認証なしエンドポイント
+service UserService {
+	@handler LoginHandler
+	post /api/v1/users/login (LoginReq) returns (LoginRes)
+
+	@handler RegisterHandler
+	post /api/v1/users/register (RegisterReq) returns (RegisterRes)
+}
+
+// 管理者専用エンドポイント（JWT認証必須）
+@server (
+	jwt:    Auth
+	prefix: /api
+)
+service UserService {
+	@handler UserListHandler
+	get /v1/admin/users (UserListReq) returns (UserListRes)
+
+	@handler UserDetailHandler
+	get /v1/admin/users/:id (UserDetailReq) returns (UserDetailRes)
+
+	@handler UserCreateHandler
+	post /v1/admin/users (UserCreateReq) returns (UserCreateRes)
+
+	@handler UserUpdateHandler
+	put /v1/admin/users/:id (UserUpdateReq) returns (UserUpdateRes)
+
+	@handler UserDeleteHandler
+	delete /v1/admin/users/:id (UserDeleteReq) returns (UserDeleteRes)
+
+	@handler UserInfoHandler
+	get /user/info (Request) returns (Response)
+
+	@handler UpdateProfileHandler
+	post /user/profile (Request) returns (Response)
+}
+
+// ======== 組織管理 型定義 ========
+type (
+	// 組織情報
+	Org {
+		Id        int64  `json:"id"`
+		Name      string `json:"name"`
+		OwnerId   int64  `json:"owner_id"`
+		CreatedAt string `json:"created_at"`
+		UpdatedAt string `json:"updated_at"`
+	}
+	// 組織作成リクエスト
+	CreateOrgReq {
+		Name string `json:"name" validate:"required,min=2,max=100"`
+	}
+	// 組織取得リクエスト
+	GetOrgReq {
+		Id int64 `path:"id"`
+	}
+	// 組織更新リクエスト
+	UpdateOrgReq {
+		Id   int64  `path:"id"`
+		Name string `json:"name" validate:"required,min=2,max=100"`
+	}
+	// 組織メンバー追加リクエスト
+	AddOrgMemberReq {
+		OrgId    int64  `path:"id"`
+		UserId   int64  `json:"user_id"`
+		RoleName string `json:"role_name"` // "admin", "member" など
+	}
+	// 組織メンバー削除リクエスト
+	RemoveOrgMemberReq {
+		OrgId  int64 `path:"id"`
+		UserId int64 `path:"userId"`
+	}
+)
+
+// ======== 組織管理 API エンドポイント定義 ========
+type (
+	CommonRes {
+		Message string `json:"message"`
+		Success bool   `json:"success"`
+	}
+)
+
+@server (
+	prefix: /api/v1
+	group:  org
+	jwt:    Auth
+)
+service UserService {
+	// 組織の作成 (認証ユーザーがオーナーになる)
+	@handler createOrg
+	post /orgs (CreateOrgReq) returns (Org)
+
+	// 自分が所属する組織一覧の取得
+	@handler listMyOrgs
+	get /orgs returns ([]Org)
+
+	// 特定の組織情報の取得
+	@handler getOrg
+	get /orgs/:id (GetOrgReq) returns (Org)
+
+	// 組織情報の更新 (組織オーナー or システム管理者)
+	@handler updateOrg
+	put /orgs/:id (UpdateOrgReq) returns (Org)
+
+	// 組織の削除 (組織オーナー or システム管理者)
+	@handler deleteOrg
+	delete /orgs/:id (GetOrgReq) returns (CommonRes)
+
+	// 組織へのメンバー追加 (組織管理者)
+	@handler addOrgMember
+	post /orgs/:id/members (AddOrgMemberReq) returns (CommonRes)
+
+	// 組織メンバーの削除 (組織管理者)
+	@handler removeOrgMember
+	delete /orgs/:id/members/:userId (RemoveOrgMemberReq) returns (CommonRes)
+}
+

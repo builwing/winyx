@@ -1,6 +1,6 @@
 // APIクライアント設定
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://winyx.jp';
 
 class ApiClient {
   private baseUrl: string;
@@ -21,9 +21,12 @@ class ApiClient {
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     
+    // 動的にトークンを取得してヘッダーに設定
+    this.updateAuthToken();
+    
     const config: RequestInit = {
       method,
-      headers: this.headers,
+      headers: { ...this.headers },
     };
 
     if (data) {
@@ -63,6 +66,24 @@ class ApiClient {
 
   async delete<T>(endpoint: string): Promise<T> {
     return this.request<T>('DELETE', endpoint);
+  }
+
+  private updateAuthToken() {
+    // ブラウザ環境でのみ実行（SSR/クライアント判定を厳密に）
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      try {
+        const token = localStorage.getItem('access_token');
+        if (token) {
+          this.headers['Authorization'] = `Bearer ${token}`;
+        } else {
+          delete this.headers['Authorization'];
+        }
+      } catch (e) {
+        // localStorage が利用できない場合は何もしない
+        console.warn('Could not access localStorage:', e);
+        delete this.headers['Authorization'];
+      }
+    }
   }
 
   setAuthToken(token: string) {

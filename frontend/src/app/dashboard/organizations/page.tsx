@@ -1,48 +1,47 @@
 'use client';
 
-import { useState } from 'react';
-import { useMyOrgs, useCreateOrg, useDeleteOrg } from '@/lib/api/org-hooks';
+import { useMyOrgs, useDeleteOrg } from '@/lib/api/org-hooks';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Building2, Users, Trash2, Edit, Loader2, Lock, AlertCircle } from 'lucide-react';
-import { format } from 'date-fns';
-import { ja } from 'date-fns/locale';
+import ClientOnly from '@/components/ClientOnly';
 
 export default function OrganizationsPage() {
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newOrgName, setNewOrgName] = useState('');
+  return (
+    <ClientOnly 
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="flex items-center space-x-2">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span>読み込み中...</span>
+          </div>
+        </div>
+      }
+    >
+      <OrganizationsContent />
+    </ClientOnly>
+  );
+}
 
+function OrganizationsContent() {
   // 認証・権限チェック
   const { isLoggedIn, loading: authLoading } = useAuth();
   const { isAdmin, getPermissionErrorMessage } = usePermissions();
 
   // React Query hooks
   const { 
-    data: organizations = [], 
+    data: organizations, 
     isLoading, 
     error 
   } = useMyOrgs();
+
+  // データの安全な取得
+  const safeOrganizations = Array.isArray(organizations) ? organizations : [];
   
-  const createOrgMutation = useCreateOrg();
   const deleteOrgMutation = useDeleteOrg();
-
-  // 組織作成ハンドラー
-  const handleCreateOrg = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newOrgName.trim()) return;
-
-    try {
-      await createOrgMutation.mutateAsync({ name: newOrgName.trim() });
-      setNewOrgName('');
-      setShowCreateForm(false);
-    } catch (error) {
-      console.error('組織作成エラー:', error);
-    }
-  };
 
   // 組織削除ハンドラー
   const handleDeleteOrg = async (orgId: number, orgName: string) => {
@@ -164,62 +163,16 @@ export default function OrganizationsPage() {
           
           <Button
             onClick={() => window.location.href = '/dashboard/organizations/new'}
-            className="flex items-center space-x-2"
+            className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium px-6 py-2 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-5 w-5" />
             <span>新しい組織を作成</span>
           </Button>
         </div>
 
-        {/* 組織作成フォーム */}
-        {showCreateForm && (
-          <Card className="p-6 mb-8 bg-white/10 backdrop-blur-sm border border-white/20">
-            <form onSubmit={handleCreateOrg} className="space-y-4">
-              <div>
-                <label htmlFor="orgName" className="block text-sm font-medium text-white mb-2">
-                  組織名
-                </label>
-                <Input
-                  id="orgName"
-                  type="text"
-                  value={newOrgName}
-                  onChange={(e) => setNewOrgName(e.target.value)}
-                  placeholder="組織名を入力してください"
-                  className="max-w-md"
-                  disabled={createOrgMutation.isPending}
-                />
-              </div>
-              <div className="flex space-x-3">
-                <Button
-                  type="submit"
-                  disabled={!newOrgName.trim() || createOrgMutation.isPending}
-                  className="flex items-center space-x-2"
-                >
-                  {createOrgMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Plus className="h-4 w-4" />
-                  )}
-                  <span>作成する</span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setShowCreateForm(false);
-                    setNewOrgName('');
-                  }}
-                  disabled={createOrgMutation.isPending}
-                >
-                  キャンセル
-                </Button>
-              </div>
-            </form>
-          </Card>
-        )}
 
         {/* 組織一覧 */}
-        {organizations.length === 0 ? (
+        {safeOrganizations.length === 0 ? (
           <Card className="p-12 text-center bg-white/10 backdrop-blur-sm border border-white/20">
             <Building2 className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-white mb-2">
@@ -230,15 +183,16 @@ export default function OrganizationsPage() {
             </p>
             <Button
               onClick={() => window.location.href = '/dashboard/organizations/new'}
-              className="flex items-center space-x-2 mx-auto"
+              className="flex items-center space-x-2 mx-auto bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-medium px-8 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+              size="lg"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-5 w-5" />
               <span>最初の組織を作成</span>
             </Button>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {organizations.map((org) => (
+            {safeOrganizations.map((org) => (
               <Card key={org.id} className="p-6 hover:shadow-lg transition-shadow bg-white/10 backdrop-blur-sm border border-white/20">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center space-x-3">
