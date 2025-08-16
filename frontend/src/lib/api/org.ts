@@ -8,14 +8,19 @@ export class OrgApi {
     return apiRequest.get<Org[]>('/api/v1/orgs');
   }
 
+  // Admin用全組織一覧の取得
+  async listAllOrgs(): Promise<Org[]> {
+    return apiRequest.get<Org[]>('/api/v1/admin/orgs');
+  }
+
   // 組織の作成
   async createOrg(data: CreateOrgReq): Promise<Org> {
     return apiRequest.post<Org>('/api/v1/orgs', data);
   }
 
-  // 特定の組織情報の取得
+  // 特定の組織情報の取得（Admin用）
   async getOrg(id: number): Promise<Org> {
-    return apiRequest.get<Org>(`/api/v1/orgs/${id}`);
+    return apiRequest.get<Org>(`/api/v1/admin/orgs/${id}`);
   }
 
   // 組織情報の更新

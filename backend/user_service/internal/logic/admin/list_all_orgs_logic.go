@@ -24,7 +24,27 @@ func NewListAllOrgsLogic(ctx context.Context, svcCtx *svc.ServiceContext) *ListA
 }
 
 func (l *ListAllOrgsLogic) ListAllOrgs() (resp []types.Org, err error) {
-	// todo: add your logic here and delete this line
+	// Admin権限チェックは必要に応じてhandlerまたはmiddlewareで実装
 
-	return
+	// 全組織をデータベースから取得
+	orgs, err := l.svcCtx.OrgsModel.FindAll(l.ctx)
+	if err != nil {
+		l.Errorf("Failed to fetch all organizations: %v", err)
+		return nil, err
+	}
+
+	// DB model から types.Org に変換
+	resp = make([]types.Org, 0, len(orgs))
+	for _, org := range orgs {
+		resp = append(resp, types.Org{
+			Id:        int64(org.Id),
+			Name:      org.Name,
+			OwnerId:   int64(org.OwnerId),
+			CreatedAt: org.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt: org.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		})
+	}
+
+	l.Infof("Successfully retrieved %d organizations for admin", len(resp))
+	return resp, nil
 }

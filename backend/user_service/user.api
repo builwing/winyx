@@ -233,7 +233,7 @@ service UserService {
 	delete /orgs/:id/members/:userId (RemoveOrgMemberReq) returns (CommonRes)
 }
 
-// ======== Admin専用組織管理API ========
+// ======== Admin専用管理API ========
 @server (
 	prefix: /api/v1
 	group:  admin
@@ -243,5 +243,17 @@ service UserService {
 	// Admin用全組織一覧の取得
 	@handler listAllOrgs
 	get /admin/orgs returns ([]Org)
+
+	// Admin用特定組織の詳細取得
+	@handler getOrgDetail
+	get /admin/orgs/:id (GetOrgReq) returns (Org)
+
+	// Admin用全ユーザー一覧の取得
+	@handler listAllUsers
+	get /admin/users (UserListReq) returns (UserListRes)
+
+	// Admin用特定ユーザーの詳細取得
+	@handler getUserDetail
+	get /admin/users/:id (UserDetailReq) returns (UserDetailRes)
 }
 

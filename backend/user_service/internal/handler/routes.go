@@ -41,31 +41,6 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Path:    "/user/profile",
 				Handler: UpdateProfileHandler(serverCtx),
 			},
-			{
-				Method:  http.MethodGet,
-				Path:    "/v1/admin/users",
-				Handler: UserListHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodPost,
-				Path:    "/v1/admin/users",
-				Handler: UserCreateHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodGet,
-				Path:    "/v1/admin/users/:id",
-				Handler: UserDetailHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodPut,
-				Path:    "/v1/admin/users/:id",
-				Handler: UserUpdateHandler(serverCtx),
-			},
-			{
-				Method:  http.MethodDelete,
-				Path:    "/v1/admin/users/:id",
-				Handler: UserDeleteHandler(serverCtx),
-			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
 		rest.WithPrefix("/api"),
@@ -77,6 +52,21 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodGet,
 				Path:    "/admin/orgs",
 				Handler: admin.ListAllOrgsHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/admin/orgs/:id",
+				Handler: admin.GetOrgDetailHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/admin/users",
+				Handler: admin.ListAllUsersHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/admin/users/:id",
+				Handler: admin.GetUserDetailHandler(serverCtx),
 			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),

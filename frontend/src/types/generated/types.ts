@@ -33,6 +33,65 @@ export interface UserInfoRes {
 }
 
 /**
+ * User Management APIs (Admin)
+ */
+export interface UserInfo {
+  user_id: number;
+  name: string;
+  email: string;
+  status: string;
+  roles?: string[];
+  profile?: UserProfileData;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserListReq {
+  page?: number;
+  limit?: number;
+}
+
+export interface UserListRes {
+  users: UserInfo[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface UserCreateReq {
+  name: string;
+  email: string;
+  password: string;
+  status?: string;
+  roles?: string[];
+  profile?: UserProfileData;
+}
+
+export interface UserUpdateReq {
+  id: number;
+  name: string;
+  email: string;
+  status?: string;
+  roles?: string[];
+  profile?: UserProfileData;
+}
+
+export interface UserDeleteRes {
+  message: string;
+}
+
+export interface UserProfileData {
+  bio?: string;
+  phone?: string;
+  address?: string;
+  birth_date?: string;
+  gender?: string;
+  occupation?: string;
+  website?: string;
+  social_links?: string;
+}
+
+/**
  * Organization Management APIs
  */
 export interface Org {

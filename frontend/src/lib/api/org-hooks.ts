@@ -7,6 +7,7 @@ import type { CreateOrgReq, UpdateOrgReq } from '@/types/generated/types';
 export const orgQueryKeys = {
   all: ['orgs'] as const,
   myOrgs: () => [...orgQueryKeys.all, 'my-orgs'] as const,
+  allOrgs: () => [...orgQueryKeys.all, 'all-orgs'] as const,
   detail: (id: number) => [...orgQueryKeys.all, 'detail', id] as const,
 };
 
@@ -15,6 +16,15 @@ export function useMyOrgs() {
   return useQuery({
     queryKey: orgQueryKeys.myOrgs(),
     queryFn: () => orgApi.listMyOrgs(),
+    staleTime: 5 * 60 * 1000, // 5分間キャッシュ
+  });
+}
+
+// Admin用全組織一覧の取得
+export function useAllOrgs() {
+  return useQuery({
+    queryKey: orgQueryKeys.allOrgs(),
+    queryFn: () => orgApi.listAllOrgs(),
     staleTime: 5 * 60 * 1000, // 5分間キャッシュ
   });
 }
@@ -37,6 +47,7 @@ export function useCreateOrg() {
     onSuccess: () => {
       // 組織一覧を再取得
       queryClient.invalidateQueries({ queryKey: orgQueryKeys.myOrgs() });
+      queryClient.invalidateQueries({ queryKey: orgQueryKeys.allOrgs() });
     },
   });
 }
@@ -51,6 +62,7 @@ export function useUpdateOrg() {
     onSuccess: (updatedOrg) => {
       // 組織一覧と詳細を更新
       queryClient.invalidateQueries({ queryKey: orgQueryKeys.myOrgs() });
+      queryClient.invalidateQueries({ queryKey: orgQueryKeys.allOrgs() });
       queryClient.setQueryData(orgQueryKeys.detail(updatedOrg.id), updatedOrg);
     },
   });
@@ -65,6 +77,7 @@ export function useDeleteOrg() {
     onSuccess: (_, deletedId) => {
       // 組織一覧を再取得し、削除された組織の詳細キャッシュを削除
       queryClient.invalidateQueries({ queryKey: orgQueryKeys.myOrgs() });
+      queryClient.invalidateQueries({ queryKey: orgQueryKeys.allOrgs() });
       queryClient.removeQueries({ queryKey: orgQueryKeys.detail(deletedId) });
     },
   });
