@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Winyx API Documentation</title>
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui.css">
+    <style>
+        /* Winyxブランドカラー */
+        .swagger-ui .topbar {
+            background: linear-gradient(90deg, #7c3aed 0%, #3b82f6 100%);
+            padding: 15px;
+        }
+        .swagger-ui .topbar .download-url-wrapper {
+            display: flex;
+            align-items: center;
+        }
+        .swagger-ui .topbar .topbar-wrapper {
+            content: "";
+        }
+        .swagger-ui .topbar .topbar-wrapper::before {
+            content: "Winyx API Documentation";
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .swagger-ui .btn.authorize {
+            background-color: #7c3aed;
+            border-color: #7c3aed;
+        }
+        .swagger-ui .btn.authorize:hover {
+            background-color: #6d28d9;
+            border-color: #6d28d9;
+        }
+        .swagger-ui .scheme-container {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background: #f9fafb;
+        }
+    </style>
+</head>
+<body>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-bundle.js"></script>
+    <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-standalone-preset.js"></script>
+    <script>
+        window.onload = function() {
+            // JWTトークンの取得（localStorageから）
+            function getAuthToken() {
+                if (typeof localStorage !== 'undefined') {
+                    return localStorage.getItem('access_token');
+                }
+                return null;
+            }
+
+            console.log('Starting Swagger UI initialization...');
+            const ui = SwaggerUIBundle({
+                url: "/api/docs/user_service.json",
+                dom_id: '#swagger-ui',
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                plugins: [
+                    SwaggerUIBundle.plugins.DownloadUrl
+                ],
+                layout: "StandaloneLayout",
+                persistAuthorization: true,
+                tryItOutEnabled: true,
+                filter: true,
+                validatorUrl: null,
+                requestInterceptor: (request) => {
+                    // 自動的にJWTトークンを付与
+                    const token = getAuthToken();
+                    if (token && !request.url.includes('/login') && !request.url.includes('/register')) {
+                        request.headers['Authorization'] = `Bearer ${token}`;
+                    }
+                    // CORSヘッダー追加
+                    request.headers['Content-Type'] = 'application/json';
+                    return request;
+                },
+                responseInterceptor: (response) => {
+                    // ログイン成功時にトークンを保存
+                    if (response.url.includes('/login') && response.status === 200) {
+                        try {
+                            const data = JSON.parse(response.text);
+                            if (data.access_token) {
+                                localStorage.setItem('access_token', data.access_token);
+                                console.log('Token saved successfully');
+                            }
+                        } catch (e) {
+                            console.error('Failed to save token:', e);
+                        }
+                    }
+                    return response;
+                },
+                onComplete: () => {
+                    // 既存のトークンがあれば自動設定
+                    const token = getAuthToken();
+                    if (token) {
+                        ui.preauthorizeApiKey('Bearer', token);
+                        console.log('Token loaded from localStorage');
+                    }
+                }
+            });
+            
+            window.ui = ui;
+
+            // トークンクリア用のヘルパー関数
+            window.clearAuthToken = function() {
+                localStorage.removeItem('access_token');
+                console.log('Token cleared');
+                location.reload();
+            };
+
+            // デバッグ用
+            console.log('Swagger UI loaded successfully');
+            console.log('To clear auth token, run: clearAuthToken()');
+        };
+    </script>
+</body>
+</html>
