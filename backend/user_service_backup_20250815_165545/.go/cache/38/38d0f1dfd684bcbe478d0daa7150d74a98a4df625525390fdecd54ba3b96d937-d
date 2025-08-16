@@ -1,7 +1,0 @@
-./deleteaccounthandler.go
-./getprofilehandler.go
-./loginhandler.go
-./logouthandler.go
-./registerhandler.go
-./updateprofilehandler.go
-./updateuserprofilehandler.go
