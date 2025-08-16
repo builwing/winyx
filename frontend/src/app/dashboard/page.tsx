@@ -31,7 +31,10 @@ import {
   Server,
   TrendingUp,
   Users,
-  Wifi
+  Wifi,
+  Code,
+  ExternalLink,
+  Book
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -152,6 +155,14 @@ export default function DashboardPage() {
 
       {/* システム情報 */}
       <SystemInfoCard configData={configData} />
+
+      {/* 開発者ツール */}
+      <DeveloperToolsCard />
+      
+      {/* デバッグ用 */}
+      <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-4 text-red-300">
+        デバッグ: DeveloperToolsCardコンポーネントはここに表示されるはずです
+      </div>
     </div>
     </div>
   );
@@ -563,6 +574,111 @@ function SystemInfoCard({ configData }: { configData: ConfigRes | undefined }) {
           </div>
           <div className="text-white font-semibold">
             {configData?.build_time ? '24時間 15分' : '不明'}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 開発者ツールカード
+function DeveloperToolsCard() {
+  const tools = [
+    {
+      title: 'Swagger UI',
+      description: 'API仕様書の閲覧とテスト実行',
+      icon: <Code className="w-5 h-5" />,
+      href: '/swagger/',
+      color: 'from-blue-500/10 to-cyan-500/10 border-blue-500/20',
+      iconColor: 'text-blue-400',
+      buttonColor: 'from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700'
+    },
+    {
+      title: 'API仕様（JSON）',
+      description: 'OpenAPI 3.0形式の仕様ファイル',
+      icon: <Book className="w-5 h-5" />,
+      href: '/api/docs/user_service.json',
+      color: 'from-green-500/10 to-emerald-500/10 border-green-500/20',
+      iconColor: 'text-green-400',
+      buttonColor: 'from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700'
+    },
+    {
+      title: 'ユーザー管理',
+      description: 'ユーザーCRUD操作とアカウント管理',
+      icon: <Users className="w-5 h-5" />,
+      href: '/users',
+      color: 'from-purple-500/10 to-pink-500/10 border-purple-500/20',
+      iconColor: 'text-purple-400',
+      buttonColor: 'from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700'
+    },
+    {
+      title: '組織管理',
+      description: '組織の作成・管理・メンバー招待',
+      icon: <Database className="w-5 h-5" />,
+      href: '/dashboard/organizations',
+      color: 'from-orange-500/10 to-red-500/10 border-orange-500/20',
+      iconColor: 'text-orange-400',
+      buttonColor: 'from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700'
+    }
+  ];
+
+  return (
+    <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 hover:bg-white/10 transition-all duration-300">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-8 h-8 bg-gradient-to-r from-indigo-400 to-blue-400 rounded-lg flex items-center justify-center">
+          <Code className="w-4 h-4 text-white" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-white">開発者ツール</h2>
+          <p className="text-gray-300 text-sm">API開発・管理・テスト用ツール</p>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {tools.map((tool, index) => (
+          <div 
+            key={index} 
+            className={`bg-gradient-to-br ${tool.color} border rounded-xl p-6 hover:scale-105 transition-all duration-300 group`}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div className={`p-3 bg-white/10 rounded-xl ${tool.iconColor} group-hover:bg-white/20 transition-all duration-300`}>
+                {tool.icon}
+              </div>
+              <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors duration-300" />
+            </div>
+            
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-blue-300 transition-colors duration-300">
+                {tool.title}
+              </h3>
+              <p className="text-gray-300 text-sm leading-relaxed">
+                {tool.description}
+              </p>
+            </div>
+            
+            <Link href={tool.href} target={tool.href.startsWith('/api/') ? '_blank' : '_self'}>
+              <Button 
+                className={`w-full bg-gradient-to-r ${tool.buttonColor} text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105`}
+              >
+                <span className="flex items-center gap-2">
+                  {tool.title === 'API仕様（JSON）' ? 'ダウンロード' : '開く'}
+                  <ExternalLink className="w-4 h-4" />
+                </span>
+              </Button>
+            </Link>
+          </div>
+        ))}
+      </div>
+      
+      {/* 注意事項 */}
+      <div className="mt-6 pt-6 border-t border-white/10">
+        <div className="flex items-start gap-3 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
+          <AlertCircle className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-yellow-400 font-medium text-sm mb-1">開発者向け機能</p>
+            <p className="text-gray-300 text-sm leading-relaxed">
+              これらのツールは開発・テスト用です。本番環境では適切なアクセス制限を設けることを推奨します。
+            </p>
           </div>
         </div>
       </div>

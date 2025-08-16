@@ -233,3 +233,15 @@ service UserService {
 	delete /orgs/:id/members/:userId (RemoveOrgMemberReq) returns (CommonRes)
 }
 
+// ======== Admin専用組織管理API ========
+@server (
+	prefix: /api/v1
+	group:  admin
+	jwt:    Auth
+)
+service UserService {
+	// Admin用全組織一覧の取得
+	@handler listAllOrgs
+	get /admin/orgs returns ([]Org)
+}
+

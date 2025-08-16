@@ -1,0 +1,856 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "Winyx User Service API",
+        "description": "\u30e6\u30fc\u30b6\u30fc\u7ba1\u7406\u30de\u30a4\u30af\u30ed\u30b5\u30fc\u30d3\u30b9 - \u8a8d\u8a3c\u30fb\u30e6\u30fc\u30b6\u30fcCRUD\u30fb\u30d7\u30ed\u30d5\u30a3\u30fc\u30eb\u30fb\u30ed\u30fc\u30eb\u7ba1\u7406\u30fb\u7d44\u7e54\u7ba1\u7406",
+        "version": "1.0.0",
+        "contact": {
+            "name": "Winyx Team"
+        }
+    },
+    "host": "winyx.jp",
+    "basePath": "/api/v1",
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "securityDefinitions": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "description": "JWT\u8a8d\u8a3c\u30c8\u30fc\u30af\u30f3\u3002\u5f62\u5f0f: Bearer {token}"
+        }
+    },
+    "paths": {
+        "/login": {
+            "post": {
+                "tags": [
+                    "\u8a8d\u8a3c"
+                ],
+                "summary": "\u30e6\u30fc\u30b6\u30fc\u30ed\u30b0\u30a4\u30f3",
+                "description": "\u30e1\u30fc\u30eb\u30a2\u30c9\u30ec\u30b9\u3068\u30d1\u30b9\u30ef\u30fc\u30c9\u3067\u30ed\u30b0\u30a4\u30f3",
+                "operationId": "login",
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/LoginReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "\u30ed\u30b0\u30a4\u30f3\u6210\u529f",
+                        "schema": {
+                            "$ref": "#/definitions/LoginRes"
+                        }
+                    },
+                    "401": {
+                        "description": "\u8a8d\u8a3c\u5931\u6557"
+                    }
+                }
+            }
+        },
+        "/register": {
+            "post": {
+                "tags": [
+                    "\u8a8d\u8a3c"
+                ],
+                "summary": "\u65b0\u898f\u30e6\u30fc\u30b6\u30fc\u767b\u9332",
+                "description": "\u65b0\u3057\u3044\u30e6\u30fc\u30b6\u30fc\u30a2\u30ab\u30a6\u30f3\u30c8\u3092\u4f5c\u6210",
+                "operationId": "register",
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/RegisterReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "\u767b\u9332\u6210\u529f",
+                        "schema": {
+                            "$ref": "#/definitions/RegisterRes"
+                        }
+                    },
+                    "400": {
+                        "description": "\u4e0d\u6b63\u306a\u30ea\u30af\u30a8\u30b9\u30c8"
+                    }
+                }
+            }
+        },
+        "/users": {
+            "get": {
+                "tags": [
+                    "\u30e6\u30fc\u30b6\u30fc\u7ba1\u7406"
+                ],
+                "summary": "\u30e6\u30fc\u30b6\u30fc\u4e00\u89a7\u53d6\u5f97",
+                "description": "\u30b7\u30b9\u30c6\u30e0\u5185\u306e\u5168\u30e6\u30fc\u30b6\u30fc\u3092\u53d6\u5f97\uff08\u7ba1\u7406\u8005\u6a29\u9650\u5fc5\u8981\uff09",
+                "operationId": "userList",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "type": "integer",
+                        "default": 1,
+                        "description": "\u30da\u30fc\u30b8\u756a\u53f7"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "type": "integer",
+                        "default": 10,
+                        "description": "1\u30da\u30fc\u30b8\u3042\u305f\u308a\u306e\u4ef6\u6570"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "\u30e6\u30fc\u30b6\u30fc\u4e00\u89a7",
+                        "schema": {
+                            "$ref": "#/definitions/UserListRes"
+                        }
+                    },
+                    "401": {
+                        "description": "\u8a8d\u8a3c\u30a8\u30e9\u30fc"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "\u30e6\u30fc\u30b6\u30fc\u7ba1\u7406"
+                ],
+                "summary": "\u30e6\u30fc\u30b6\u30fc\u4f5c\u6210",
+                "description": "\u65b0\u898f\u30e6\u30fc\u30b6\u30fc\u3092\u4f5c\u6210\uff08\u7ba1\u7406\u8005\u6a29\u9650\u5fc5\u8981\uff09",
+                "operationId": "userCreate",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/UserCreateReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "\u4f5c\u6210\u6210\u529f",
+                        "schema": {
+                            "$ref": "#/definitions/UserCreateRes"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{id}": {
+            "get": {
+                "tags": [
+                    "\u30e6\u30fc\u30b6\u30fc\u7ba1\u7406"
+                ],
+                "summary": "\u30e6\u30fc\u30b6\u30fc\u8a73\u7d30\u53d6\u5f97",
+                "description": "\u7279\u5b9a\u30e6\u30fc\u30b6\u30fc\u306e\u8a73\u7d30\u60c5\u5831\u3092\u53d6\u5f97",
+                "operationId": "userDetail",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "integer",
+                        "description": "\u30e6\u30fc\u30b6\u30fcID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "\u30e6\u30fc\u30b6\u30fc\u8a73\u7d30",
+                        "schema": {
+                            "$ref": "#/definitions/UserDetailRes"
+                        }
+                    },
+                    "404": {
+                        "description": "\u30e6\u30fc\u30b6\u30fc\u304c\u898b\u3064\u304b\u3089\u306a\u3044"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "\u30e6\u30fc\u30b6\u30fc\u7ba1\u7406"
+                ],
+                "summary": "\u30e6\u30fc\u30b6\u30fc\u66f4\u65b0",
+                "description": "\u30e6\u30fc\u30b6\u30fc\u60c5\u5831\u3092\u66f4\u65b0",
+                "operationId": "userUpdate",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "integer",
+                        "description": "\u30e6\u30fc\u30b6\u30fcID"
+                    },
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/UserUpdateReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "\u66f4\u65b0\u6210\u529f",
+                        "schema": {
+                            "$ref": "#/definitions/UserUpdateRes"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "\u30e6\u30fc\u30b6\u30fc\u7ba1\u7406"
+                ],
+                "summary": "\u30e6\u30fc\u30b6\u30fc\u524a\u9664",
+                "description": "\u30e6\u30fc\u30b6\u30fc\u3092\u524a\u9664",
+                "operationId": "userDelete",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "integer",
+                        "description": "\u30e6\u30fc\u30b6\u30fcID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "\u524a\u9664\u6210\u529f",
+                        "schema": {
+                            "$ref": "#/definitions/UserDeleteRes"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/info": {
+            "get": {
+                "tags": [
+                    "\u30d7\u30ed\u30d5\u30a3\u30fc\u30eb"
+                ],
+                "summary": "\u73fe\u5728\u306e\u30e6\u30fc\u30b6\u30fc\u60c5\u5831\u53d6\u5f97",
+                "description": "\u30ed\u30b0\u30a4\u30f3\u4e2d\u306e\u30e6\u30fc\u30b6\u30fc\u60c5\u5831\u3092\u53d6\u5f97",
+                "operationId": "userInfo",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "\u30e6\u30fc\u30b6\u30fc\u60c5\u5831",
+                        "schema": {
+                            "$ref": "#/definitions/UserInfoRes"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/profile": {
+            "put": {
+                "tags": [
+                    "\u30d7\u30ed\u30d5\u30a3\u30fc\u30eb"
+                ],
+                "summary": "\u30d7\u30ed\u30d5\u30a3\u30fc\u30eb\u66f4\u65b0",
+                "description": "\u30ed\u30b0\u30a4\u30f3\u4e2d\u306e\u30e6\u30fc\u30b6\u30fc\u306e\u30d7\u30ed\u30d5\u30a3\u30fc\u30eb\u3092\u66f4\u65b0",
+                "operationId": "updateProfile",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/UpdateProfileReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "\u66f4\u65b0\u6210\u529f",
+                        "schema": {
+                            "$ref": "#/definitions/UpdateProfileRes"
+                        }
+                    }
+                }
+            }
+        },
+        "/orgs": {
+            "get": {
+                "tags": [
+                    "\u7d44\u7e54\u7ba1\u7406"
+                ],
+                "summary": "\u6240\u5c5e\u7d44\u7e54\u4e00\u89a7",
+                "description": "\u30ed\u30b0\u30a4\u30f3\u30e6\u30fc\u30b6\u30fc\u304c\u6240\u5c5e\u3059\u308b\u7d44\u7e54\u306e\u4e00\u89a7\u3092\u53d6\u5f97",
+                "operationId": "listMyOrgs",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "\u7d44\u7e54\u4e00\u89a7",
+                        "schema": {
+                            "$ref": "#/definitions/ListMyOrgsRes"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "\u7d44\u7e54\u7ba1\u7406"
+                ],
+                "summary": "\u7d44\u7e54\u4f5c\u6210",
+                "description": "\u65b0\u3057\u3044\u7d44\u7e54\u3092\u4f5c\u6210",
+                "operationId": "createOrg",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/CreateOrgReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "\u4f5c\u6210\u6210\u529f",
+                        "schema": {
+                            "$ref": "#/definitions/CreateOrgRes"
+                        }
+                    }
+                }
+            }
+        },
+        "/orgs/{id}": {
+            "get": {
+                "tags": [
+                    "\u7d44\u7e54\u7ba1\u7406"
+                ],
+                "summary": "\u7d44\u7e54\u8a73\u7d30\u53d6\u5f97",
+                "description": "\u7279\u5b9a\u7d44\u7e54\u306e\u8a73\u7d30\u60c5\u5831\u3092\u53d6\u5f97",
+                "operationId": "getOrg",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "integer",
+                        "description": "\u7d44\u7e54ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "\u7d44\u7e54\u8a73\u7d30",
+                        "schema": {
+                            "$ref": "#/definitions/GetOrgRes"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "\u7d44\u7e54\u7ba1\u7406"
+                ],
+                "summary": "\u7d44\u7e54\u66f4\u65b0",
+                "description": "\u7d44\u7e54\u60c5\u5831\u3092\u66f4\u65b0",
+                "operationId": "updateOrg",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "integer",
+                        "description": "\u7d44\u7e54ID"
+                    },
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/UpdateOrgReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "\u66f4\u65b0\u6210\u529f",
+                        "schema": {
+                            "$ref": "#/definitions/UpdateOrgRes"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "\u7d44\u7e54\u7ba1\u7406"
+                ],
+                "summary": "\u7d44\u7e54\u524a\u9664",
+                "description": "\u7d44\u7e54\u3092\u524a\u9664",
+                "operationId": "deleteOrg",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "integer",
+                        "description": "\u7d44\u7e54ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "\u524a\u9664\u6210\u529f",
+                        "schema": {
+                            "$ref": "#/definitions/DeleteOrgRes"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "LoginReq": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "\u30e1\u30fc\u30eb\u30a2\u30c9\u30ec\u30b9"
+                },
+                "password": {
+                    "type": "string",
+                    "description": "\u30d1\u30b9\u30ef\u30fc\u30c9"
+                }
+            }
+        },
+        "LoginRes": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string",
+                    "description": "JWT\u30a2\u30af\u30bb\u30b9\u30c8\u30fc\u30af\u30f3"
+                },
+                "expire_time": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "\u6709\u52b9\u671f\u9650\uff08Unix\u6642\u9593\uff09"
+                }
+            }
+        },
+        "RegisterReq": {
+            "type": "object",
+            "required": [
+                "name",
+                "email",
+                "password"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 50,
+                    "description": "\u30e6\u30fc\u30b6\u30fc\u540d"
+                },
+                "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "\u30e1\u30fc\u30eb\u30a2\u30c9\u30ec\u30b9"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 6,
+                    "description": "\u30d1\u30b9\u30ef\u30fc\u30c9"
+                }
+            }
+        },
+        "RegisterRes": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "\u30e6\u30fc\u30b6\u30fcID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "\u30e6\u30fc\u30b6\u30fc\u540d"
+                },
+                "email": {
+                    "type": "string",
+                    "description": "\u30e1\u30fc\u30eb\u30a2\u30c9\u30ec\u30b9"
+                }
+            }
+        },
+        "UserInfo": {
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "\u30e6\u30fc\u30b6\u30fcID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "\u30e6\u30fc\u30b6\u30fc\u540d"
+                },
+                "email": {
+                    "type": "string",
+                    "description": "\u30e1\u30fc\u30eb\u30a2\u30c9\u30ec\u30b9"
+                },
+                "status": {
+                    "type": "string",
+                    "description": "\u30b9\u30c6\u30fc\u30bf\u30b9"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "\u30ed\u30fc\u30eb\u4e00\u89a7"
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "\u4f5c\u6210\u65e5\u6642"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "\u66f4\u65b0\u65e5\u6642"
+                }
+            }
+        },
+        "UserListRes": {
+            "type": "object",
+            "properties": {
+                "users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/UserInfo"
+                    }
+                },
+                "total": {
+                    "type": "integer",
+                    "description": "\u7dcf\u4ef6\u6570"
+                }
+            }
+        },
+        "UserCreateReq": {
+            "type": "object",
+            "required": [
+                "name",
+                "email",
+                "password"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "\u30e6\u30fc\u30b6\u30fc\u540d"
+                },
+                "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "\u30e1\u30fc\u30eb\u30a2\u30c9\u30ec\u30b9"
+                },
+                "password": {
+                    "type": "string",
+                    "description": "\u30d1\u30b9\u30ef\u30fc\u30c9"
+                }
+            }
+        },
+        "UserCreateRes": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "\u4f5c\u6210\u3055\u308c\u305f\u30e6\u30fc\u30b6\u30fcID"
+                }
+            }
+        },
+        "UserDetailRes": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/UserInfo"
+                }
+            }
+        },
+        "UserUpdateReq": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "\u30e6\u30fc\u30b6\u30fc\u540d"
+                },
+                "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "\u30e1\u30fc\u30eb\u30a2\u30c9\u30ec\u30b9"
+                }
+            }
+        },
+        "UserUpdateRes": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "description": "\u66f4\u65b0\u7d50\u679c\u30e1\u30c3\u30bb\u30fc\u30b8"
+                }
+            }
+        },
+        "UserDeleteRes": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "description": "\u524a\u9664\u7d50\u679c\u30e1\u30c3\u30bb\u30fc\u30b8"
+                }
+            }
+        },
+        "UserInfoRes": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/UserInfo"
+                }
+            }
+        },
+        "UpdateProfileReq": {
+            "type": "object",
+            "properties": {
+                "bio": {
+                    "type": "string",
+                    "description": "\u81ea\u5df1\u7d39\u4ecb"
+                },
+                "phone": {
+                    "type": "string",
+                    "description": "\u96fb\u8a71\u756a\u53f7"
+                },
+                "address": {
+                    "type": "string",
+                    "description": "\u4f4f\u6240"
+                },
+                "birth_date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "\u751f\u5e74\u6708\u65e5"
+                },
+                "gender": {
+                    "type": "string",
+                    "description": "\u6027\u5225"
+                }
+            }
+        },
+        "UpdateProfileRes": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "description": "\u66f4\u65b0\u7d50\u679c\u30e1\u30c3\u30bb\u30fc\u30b8"
+                }
+            }
+        },
+        "CreateOrgReq": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "\u7d44\u7e54\u540d"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "\u7d44\u7e54\u306e\u8aac\u660e"
+                }
+            }
+        },
+        "CreateOrgRes": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "\u7d44\u7e54ID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "\u7d44\u7e54\u540d"
+                }
+            }
+        },
+        "ListMyOrgsRes": {
+            "type": "object",
+            "properties": {
+                "orgs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer",
+                                "format": "int64",
+                                "description": "\u7d44\u7e54ID"
+                            },
+                            "name": {
+                                "type": "string",
+                                "description": "\u7d44\u7e54\u540d"
+                            },
+                            "role": {
+                                "type": "string",
+                                "description": "\u7d44\u7e54\u5185\u3067\u306e\u5f79\u5272"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "GetOrgRes": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "\u7d44\u7e54ID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "\u7d44\u7e54\u540d"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "\u7d44\u7e54\u306e\u8aac\u660e"
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "\u4f5c\u6210\u65e5\u6642"
+                }
+            }
+        },
+        "UpdateOrgReq": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "\u7d44\u7e54\u540d"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "\u7d44\u7e54\u306e\u8aac\u660e"
+                }
+            }
+        },
+        "UpdateOrgRes": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "description": "\u66f4\u65b0\u7d50\u679c\u30e1\u30c3\u30bb\u30fc\u30b8"
+                }
+            }
+        },
+        "DeleteOrgRes": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "description": "\u524a\u9664\u7d50\u679c\u30e1\u30c3\u30bb\u30fc\u30b8"
+                }
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "\u8a8d\u8a3c",
+            "description": "\u30e6\u30fc\u30b6\u30fc\u8a8d\u8a3c\u95a2\u9023\u306eAPI"
+        },
+        {
+            "name": "\u30e6\u30fc\u30b6\u30fc\u7ba1\u7406",
+            "description": "\u30e6\u30fc\u30b6\u30fcCRUD\u64cd\u4f5c\uff08\u7ba1\u7406\u8005\u6a29\u9650\u5fc5\u8981\uff09"
+        },
+        {
+            "name": "\u30d7\u30ed\u30d5\u30a3\u30fc\u30eb",
+            "description": "\u30e6\u30fc\u30b6\u30fc\u30d7\u30ed\u30d5\u30a3\u30fc\u30eb\u7ba1\u7406"
+        },
+        {
+            "name": "\u7d44\u7e54\u7ba1\u7406",
+            "description": "\u7d44\u7e54\u306e\u4f5c\u6210\u30fb\u7ba1\u7406\u30fb\u30e1\u30f3\u30d0\u30fc\u7ba1\u7406"
+        }
+    ]
+}

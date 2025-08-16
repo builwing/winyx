@@ -6,6 +6,7 @@ package handler
 import (
 	"net/http"
 
+	admin "user_service/internal/handler/admin"
 	org "user_service/internal/handler/org"
 	"user_service/internal/svc"
 
@@ -68,6 +69,18 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
 		rest.WithPrefix("/api"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				Method:  http.MethodGet,
+				Path:    "/admin/orgs",
+				Handler: admin.ListAllOrgsHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/v1"),
 	)
 
 	server.AddRoutes(
