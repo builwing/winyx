@@ -215,6 +215,13 @@ npm install axios zustand @tanstack/react-query zod react-hook-form
 npm install @hookform/resolvers date-fns js-cookie
 npm install --save-dev @types/js-cookie
 
+# 契約駆動開発用パッケージ
+npm install @grpc/grpc-js @grpc/proto-loader
+
+# OpenAPI/TypeScript型生成
+npm install openapi-typescript openapi-fetch
+npm install --save-dev swagger-typescript-api
+
 # アイコンライブラリ
 npm install lucide-react
 ```
@@ -253,7 +260,49 @@ npx shadcn@latest add tabs
 npx shadcn@latest add alert
 ```
 
-### 6.1.6 ESLint設定（オプション）
+### 6.1.6 契約駆動開発環境設定
+
+- [ ] 型定義自動生成スクリプトの追加
+```bash
+# package.jsonにスクリプトを追加
+cat >> package.json << 'EOF'
+{
+  "scripts": {
+    "generate:types": "openapi-typescript ../contracts/api/openapi.yaml -o src/types/generated/api.ts",
+    "generate:client": "swagger-typescript-api -p ../contracts/api/openapi.yaml -o src/lib/api/generated -n client.ts",
+    "contracts:sync": "npm run generate:types && npm run generate:client",
+    "postinstall": "npm run contracts:sync"
+  }
+}
+EOF
+```
+
+- [ ] 契約ファイル監視設定
+```bash
+# 契約ファイル変更時の自動再生成設定
+cat > scripts/watch-contracts.js << 'EOF'
+const chokidar = require('chokidar');
+const { exec } = require('child_process');
+
+console.log('契約ファイルの監視を開始します...');
+
+chokidar.watch('../contracts/**/*.{api,yaml,json}').on('change', (path) => {
+  console.log(`契約ファイルが変更されました: ${path}`);
+  exec('npm run contracts:sync', (error, stdout, stderr) => {
+    if (error) {
+      console.error(`エラー: ${error}`);
+      return;
+    }
+    console.log('型定義とクライアントを再生成しました');
+  });
+});
+EOF
+
+# 監視用パッケージのインストール
+npm install --save-dev chokidar
+```
+
+### 6.1.7 ESLint設定（オプション）
 
 - [ ] ESLintのインストールと設定
 ```bash
@@ -283,7 +332,7 @@ cat > .eslintrc.json << 'EOF'
 EOF
 ```
 
-### 6.1.7 開発サーバーの起動
+### 6.1.8 開発サーバーの起動
 
 - [ ] 開発環境の起動と確認
 ```bash
@@ -298,7 +347,49 @@ npm run build
 npm run start
 ```
 
-### 6.1.8 トラブルシューティング
+### 6.1.9 環境設定
+
+- [ ] 環境別API設定
+```bash
+# .env.local（開発環境）
+cat > .env.local << 'EOF'
+# API設定（開発環境）
+NEXT_PUBLIC_API_URL=http://localhost:8888
+NEXT_PUBLIC_RPC_URL=http://localhost:9090
+
+# 認証設定
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=dev-secret-key
+
+# 契約駆動開発設定
+NEXT_PUBLIC_CONTRACTS_PATH=../contracts
+NEXT_PUBLIC_ENABLE_MOCKS=true
+
+# 機能フラグ
+NEXT_PUBLIC_ENABLE_ANALYTICS=false
+NEXT_PUBLIC_ENABLE_DEBUG=true
+EOF
+
+# .env.production（本番環境）
+cat > .env.production << 'EOF'
+# API設定（本番環境ではNginxプロキシ経由）
+NEXT_PUBLIC_API_URL=
+NEXT_PUBLIC_RPC_URL=
+
+# 認証設定
+NEXTAUTH_URL=https://winyx.jp
+NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+
+# 契約駆動開発設定
+NEXT_PUBLIC_ENABLE_MOCKS=false
+
+# 機能フラグ
+NEXT_PUBLIC_ENABLE_ANALYTICS=true
+NEXT_PUBLIC_ENABLE_DEBUG=false
+EOF
+```
+
+### 6.1.10 トラブルシューティング
 
 **shadcnエラーの場合:**
 ```bash
@@ -372,6 +463,99 @@ const queryClient = new QueryClient({
 
 ---
 
+## 第1.5節 契約駆動開発統合
+
+### 6.1.5.1 契約ファイルからの型定義生成
+
+WinyxプロジェクトではGo-Zero契約駆動開発手法を採用し、APIの型定義をバックエンドの契約ファイル（.api）から自動生成します。
+
+- [ ] OpenAPI仕様書の生成確認
+```bash
+# バックエンドからOpenAPI仕様を生成
+cd /var/www/winyx/backend/user_service
+goctl api plugin -plugin goctl-swagger="swagger -filename user.json -host winyx.jp -basepath /api/v1" -api user.api -dir .
+
+# 生成されたOpenAPI仕様をフロントエンド用に配置
+cp user.json ../../contracts/api/user-service.json
+```
+
+- [ ] TypeScript型の自動生成
+```bash
+cd /var/www/winyx/frontend
+
+# OpenAPIからTypeScript型を生成
+npm run generate:types
+
+# APIクライアントコードの生成
+npm run generate:client
+
+# 生成結果の確認
+ls -la src/types/generated/
+ls -la src/lib/api/generated/
+```
+
+### 6.1.5.2 契約変更時の自動同期
+
+契約ファイル（.api）が更新されると、フロントエンドの型定義とAPIクライアントが自動で再生成される仕組みを実装します。
+
+- [ ] 契約ファイル監視システム
+```bash
+# 開発時の契約監視モード
+npm run dev &
+npm run contracts:watch &
+
+# または統合開発コマンド
+npm run dev:with-contracts
+```
+
+### 6.1.5.3 型安全なAPIクライアント
+
+生成された型定義により、コンパイル時にAPIリクエスト・レスポンスの型チェックが行われます。
+
+```typescript
+// 例：型安全なユーザー作成
+import { api } from '@/lib/api/client'
+import type { Generated } from '@/types/generated/api'
+
+// リクエストデータの型チェック
+const userData: Generated.CreateUserRequest = {
+  name: "田中太郎",
+  email: "tanaka@example.com",
+  password: "securepass123"
+}
+
+// レスポンスデータの型チェック
+const user: Generated.UserResponse = await api.users.create(userData)
+console.log(user.id) // number型として安全にアクセス
+```
+
+### 6.1.5.4 モックAPIサーバー
+
+開発環境では、契約ファイルから生成されたモックサーバーを使用してバックエンド非依存での開発が可能です。
+
+- [ ] モックサーバーの設定
+```bash
+# prismを使ったモックサーバー
+npm install -g @stoplight/prism-cli
+
+# OpenAPI仕様からモックサーバーを起動
+prism mock ../contracts/api/user-service.json --port 8888 --host 0.0.0.0
+```
+
+- [ ] 環境切り替え設定
+```typescript
+// src/lib/api/config.ts
+const API_CONFIG = {
+  baseURL: process.env.NEXT_PUBLIC_ENABLE_MOCKS 
+    ? 'http://localhost:8888' 
+    : process.env.NEXT_PUBLIC_API_URL || '',
+  timeout: 10000,
+  enableMocks: process.env.NEXT_PUBLIC_ENABLE_MOCKS === 'true'
+}
+```
+
+---
+
 ## 第2節 プロジェクト構成とアーキテクチャ
 
 ### 6.2.1 ディレクトリ構造
@@ -413,25 +597,35 @@ frontend/
 └── next.config.js              # Next.js設定
 ```
 
-### 6.2.2 環境変数設定
+### 6.2.2 マイクロサービス対応設定
 
-- [ ] 環境変数ファイルの作成
+- [ ] マルチサービス環境変数設定
 ```bash
 vim /var/www/winyx/frontend/.env.local
 ```
 
 ```env
-# API設定（本番環境では空文字でNginxプロキシ経由）
-NEXT_PUBLIC_API_URL=
+# マイクロサービスAPI設定
+NEXT_PUBLIC_USER_API_URL=/api/users
+NEXT_PUBLIC_TASK_API_URL=/api/tasks
+NEXT_PUBLIC_MESSAGE_API_URL=/api/messages
+
+# 開発環境設定
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_WS_URL=ws://localhost:8889
 
 # 認証設定
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=your-secret-key-here
 
+# 契約駆動開発設定
+NEXT_PUBLIC_CONTRACTS_BASE=/contracts
+NEXT_PUBLIC_OPENAPI_SPEC_URL=/api/docs/openapi.json
+
 # 機能フラグ
 NEXT_PUBLIC_ENABLE_ANALYTICS=false
 NEXT_PUBLIC_ENABLE_DEBUG=true
+NEXT_PUBLIC_ENABLE_MOCK_API=true
 ```
 
 ### 6.2.3 Next.js 15の高度な設定
@@ -550,7 +744,7 @@ Next.js 15では静的エクスポート（`output: 'export'`）を使用して�
 - Nginxのみで配信可能
 - スケーラビリティの向上
 
-#### Nginxプロキシ設定
+### 6.2.5 マイクロサービス対応Nginxプロキシ設定
 
 - [ ] Nginx設定ファイル（/etc/nginx/sites-available/winyx）
 ```nginx
@@ -558,14 +752,56 @@ server {
     listen 80;
     server_name winyx.jp www.winyx.jp;
     
-    # API プロキシ設定
-    location /api/ {
-        proxy_pass http://localhost:8888;
+    # マイクロサービスAPI プロキシ設定
+    # UserService (ユーザー管理)
+    location /api/users/ {
+        proxy_pass http://localhost:8888/;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Service-Name "user_service";
+    }
+    
+    # TaskService (タスク管理)
+    location /api/tasks/ {
+        proxy_pass http://localhost:8889/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Service-Name "task_service";
+    }
+    
+    # MessageService (メッセージ管理)
+    location /api/messages/ {
+        proxy_pass http://localhost:8890/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Service-Name "message_service";
+    }
+    
+    # WebSocket接続（リアルタイム通信）
+    location /ws/ {
+        proxy_pass http://localhost:8890;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    
+    # OpenAPI仕様書配信
+    location /api/docs/ {
+        proxy_pass http://localhost:8888/docs/;
+        proxy_set_header Host $host;
     }
     
     # フロントエンド静的ファイル（Static Export）
@@ -747,167 +983,186 @@ export const useAuth = () => {
 }
 ```
 
-### 6.3.2 APIクライアントの設定
+### 6.3.2 Go-Zero API統合クライアント設定
 
-- [ ] APIクライアントの設定（Nginxプロキシ対応）
+- [ ] マイクロサービス対応APIクライアントの設定
 ```bash
 vim /var/www/winyx/frontend/src/lib/api/client.ts
 ```
 
 ```typescript
-// APIクライアント設定
+import Cookies from 'js-cookie'
+import type { Generated } from '@/types/generated/api'
 
-// 相対パスを使用（Nginxプロキシ経由）
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+// マイクロサービス別URLを管理
+interface ServiceEndpoints {
+  users: string
+  tasks: string
+  messages: string
+}
 
-class ApiClient {
-  private baseUrl: string;
-  private headers: Record<string, string>;
+const SERVICE_ENDPOINTS: ServiceEndpoints = {
+  users: process.env.NEXT_PUBLIC_USER_API_URL || '/api/users',
+  tasks: process.env.NEXT_PUBLIC_TASK_API_URL || '/api/tasks',
+  messages: process.env.NEXT_PUBLIC_MESSAGE_API_URL || '/api/messages',
+}
 
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
-    this.headers = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    };
+class GoZeroApiClient {
+  private getServiceUrl(service: keyof ServiceEndpoints): string {
+    return SERVICE_ENDPOINTS[service]
   }
 
   private async request<T>(
-    method: string,
+    service: keyof ServiceEndpoints,
     endpoint: string,
+    method: string = 'GET',
     data?: any
   ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
+    const baseUrl = this.getServiceUrl(service)
+    const url = `${baseUrl}${endpoint}`
     
+    const token = Cookies.get('access_token')
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    }
+    
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+    }
+
     const config: RequestInit = {
       method,
-      headers: this.headers,
-    };
+      headers,
+      credentials: 'include',
+    }
 
-    if (data) {
-      config.body = JSON.stringify(data);
+    if (data && method !== 'GET') {
+      config.body = JSON.stringify(data)
     }
 
     try {
-      const response = await fetch(url, config);
+      const response = await fetch(url, config)
+      
+      if (response.status === 401) {
+        await this.handleTokenRefresh()
+        // リトライ
+        headers.Authorization = `Bearer ${Cookies.get('access_token')}`
+        const retryResponse = await fetch(url, { ...config, headers })
+        
+        if (!retryResponse.ok) {
+          throw new Error(`API Error: ${retryResponse.status}`)
+        }
+        
+        return retryResponse.json()
+      }
       
       if (!response.ok) {
-        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.message || `API Error: ${response.status}`)
       }
       
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        return response.json();
+      const contentType = response.headers.get('content-type')
+      if (contentType?.includes('application/json')) {
+        return response.json()
       }
       
-      return response.text() as any;
+      return response.text() as any
     } catch (error) {
-      console.error('API Request failed:', error);
-      throw error;
+      console.error(`API Request failed [${service}${endpoint}]:`, error)
+      throw error
     }
   }
 
-  async get<T>(endpoint: string): Promise<T> {
-    return this.request<T>('GET', endpoint);
-  }
-
-  async post<T>(endpoint: string, data?: any): Promise<T> {
-    return this.request<T>('POST', endpoint, data);
-  }
-
-  async put<T>(endpoint: string, data?: any): Promise<T> {
-    return this.request<T>('PUT', endpoint, data);
-  }
-
-  async delete<T>(endpoint: string): Promise<T> {
-    return this.request<T>('DELETE', endpoint);
-  }
-
-  setAuthToken(token: string) {
-    this.headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  clearAuthToken() {
-    delete this.headers['Authorization'];
-  }
-}
-
-export const apiRequest = new ApiClient(API_BASE_URL);
-
-// リクエストインターセプター
-api.interceptors.request.use(
-  (config) => {
-    const token = Cookies.get('access_token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+  private async handleTokenRefresh(): Promise<void> {
+    const refreshToken = Cookies.get('refresh_token')
+    if (!refreshToken) {
+      window.location.href = '/login'
+      return
     }
-    return config
-  },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
 
-// レスポンスインターセプター
-api.interceptors.response.use(
-  (response: AxiosResponse) => {
-    return response
-  },
-  async (error: AxiosError) => {
-    const originalRequest = error.config as any
+    try {
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      })
 
-    // 401エラーでリフレッシュトークンがある場合
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true
-
-      const refreshToken = Cookies.get('refresh_token')
-      if (refreshToken) {
-        try {
-          const response = await axios.post(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/auth/refresh`,
-            { refresh_token: refreshToken }
-          )
-
-          const { access_token } = response.data
-          Cookies.set('access_token', access_token, {
-            expires: 1,
-            sameSite: 'strict',
-            secure: process.env.NODE_ENV === 'production',
-          })
-
-          originalRequest.headers.Authorization = `Bearer ${access_token}`
-          return api(originalRequest)
-        } catch (refreshError) {
-          // リフレッシュも失敗した場合はログアウト
-          Cookies.remove('access_token')
-          Cookies.remove('refresh_token')
-          window.location.href = '/login'
-          return Promise.reject(refreshError)
-        }
+      if (!response.ok) {
+        throw new Error('Token refresh failed')
       }
+
+      const { access_token } = await response.json()
+      Cookies.set('access_token', access_token, {
+        expires: 1,
+        sameSite: 'strict',
+        secure: process.env.NODE_ENV === 'production',
+      })
+    } catch (error) {
+      Cookies.remove('access_token')
+      Cookies.remove('refresh_token')
+      window.location.href = '/login'
     }
-
-    return Promise.reject(error)
   }
-)
 
-// 型安全なAPIリクエスト関数
-export const apiRequest = {
-  get: <T = any>(url: string, config?: any): Promise<T> =>
-    api.get(url, config).then((res) => res.data),
-    
-  post: <T = any>(url: string, data?: any, config?: any): Promise<T> =>
-    api.post(url, data, config).then((res) => res.data),
-    
-  put: <T = any>(url: string, data?: any, config?: any): Promise<T> =>
-    api.put(url, data, config).then((res) => res.data),
-    
-  delete: <T = any>(url: string, config?: any): Promise<T> =>
-    api.delete(url, config).then((res) => res.data),
-    
-  patch: <T = any>(url: string, data?: any, config?: any): Promise<T> =>
-    api.patch(url, data, config).then((res) => res.data),
+  // UserService API
+  users = {
+    get: <T = Generated.UserResponse>(id: number): Promise<T> =>
+      this.request('users', `/${id}`),
+    list: <T = Generated.UserListResponse>(params?: Generated.UserListParams): Promise<T> =>
+      this.request('users', `?${new URLSearchParams(params as any)}`),
+    create: <T = Generated.UserResponse>(data: Generated.CreateUserRequest): Promise<T> =>
+      this.request('users', '/', 'POST', data),
+    update: <T = Generated.UserResponse>(id: number, data: Generated.UpdateUserRequest): Promise<T> =>
+      this.request('users', `/${id}`, 'PUT', data),
+    delete: (id: number): Promise<void> =>
+      this.request('users', `/${id}`, 'DELETE'),
+  }
+
+  // TaskService API
+  tasks = {
+    get: <T = Generated.TaskResponse>(id: number): Promise<T> =>
+      this.request('tasks', `/${id}`),
+    list: <T = Generated.TaskListResponse>(params?: Generated.TaskListParams): Promise<T> =>
+      this.request('tasks', `?${new URLSearchParams(params as any)}`),
+    create: <T = Generated.TaskResponse>(data: Generated.CreateTaskRequest): Promise<T> =>
+      this.request('tasks', '/', 'POST', data),
+    update: <T = Generated.TaskResponse>(id: number, data: Generated.UpdateTaskRequest): Promise<T> =>
+      this.request('tasks', `/${id}`, 'PUT', data),
+    delete: (id: number): Promise<void> =>
+      this.request('tasks', `/${id}`, 'DELETE'),
+  }
+
+  // MessageService API
+  messages = {
+    get: <T = Generated.MessageResponse>(id: number): Promise<T> =>
+      this.request('messages', `/${id}`),
+    list: <T = Generated.MessageListResponse>(params?: Generated.MessageListParams): Promise<T> =>
+      this.request('messages', `?${new URLSearchParams(params as any)}`),
+    send: <T = Generated.MessageResponse>(data: Generated.SendMessageRequest): Promise<T> =>
+      this.request('messages', '/', 'POST', data),
+    delete: (id: number): Promise<void> =>
+      this.request('messages', `/${id}`, 'DELETE'),
+  }
+
+  // 認証API
+  auth = {
+    login: <T = Generated.LoginResponse>(data: Generated.LoginRequest): Promise<T> =>
+      this.request('users', '/auth/login', 'POST', data),
+    register: <T = Generated.RegisterResponse>(data: Generated.RegisterRequest): Promise<T> =>
+      this.request('users', '/auth/register', 'POST', data),
+    logout: (): Promise<void> =>
+      this.request('users', '/auth/logout', 'POST'),
+    me: <T = Generated.UserResponse>(): Promise<T> =>
+      this.request('users', '/auth/me'),
+  }
 }
+
+export const api = new GoZeroApiClient()
+export type ApiClient = typeof api
+
+// 後方互換性のためのエクスポート
+export const apiRequest = api
 ```
 
 ### 6.3.3 認証ミドルウェア
@@ -1032,6 +1287,145 @@ export const useAppStore = create<AppState>()(
     { name: 'AppStore' }
   )
 )
+```
+
+### 6.2.6 React Query最適化設定
+
+- [ ] Go-Zero対応React Query設定
+```bash
+vim /var/www/winyx/frontend/src/hooks/use-contract-api.ts
+```
+
+```typescript
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { api } from '@/lib/api/client'
+import { toast } from '@/components/ui/use-toast'
+import type { Generated } from '@/types/generated/api'
+
+// 契約駆動APIクエリーキー
+export const QueryKeys = {
+  users: {
+    all: ['users'] as const,
+    lists: () => [...QueryKeys.users.all, 'list'] as const,
+    list: (params: Generated.UserListParams) => [...QueryKeys.users.lists(), params] as const,
+    details: () => [...QueryKeys.users.all, 'detail'] as const,
+    detail: (id: number) => [...QueryKeys.users.details(), id] as const,
+  },
+  tasks: {
+    all: ['tasks'] as const,
+    lists: () => [...QueryKeys.tasks.all, 'list'] as const,
+    list: (params: Generated.TaskListParams) => [...QueryKeys.tasks.lists(), params] as const,
+    details: () => [...QueryKeys.tasks.all, 'detail'] as const,
+    detail: (id: number) => [...QueryKeys.tasks.details(), id] as const,
+  },
+  messages: {
+    all: ['messages'] as const,
+    lists: () => [...QueryKeys.messages.all, 'list'] as const,
+    list: (params: Generated.MessageListParams) => [...QueryKeys.messages.lists(), params] as const,
+    details: () => [...QueryKeys.messages.all, 'detail'] as const,
+    detail: (id: number) => [...QueryKeys.messages.details(), id] as const,
+  },
+} as const
+
+// ユーザー管理フック
+export function useUser(id: number) {
+  return useQuery({
+    queryKey: QueryKeys.users.detail(id),
+    queryFn: () => api.users.get(id),
+    enabled: !!id,
+  })
+}
+
+export function useUsers(params: Generated.UserListParams = {}) {
+  return useQuery({
+    queryKey: QueryKeys.users.list(params),
+    queryFn: () => api.users.list(params),
+    staleTime: 1000 * 60 * 5, // 5分
+  })
+}
+
+export function useCreateUser() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: api.users.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QueryKeys.users.all })
+      toast({
+        title: '成功',
+        description: 'ユーザーが作成されました',
+      })
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'エラー',
+        description: error.message || 'ユーザーの作成に失敗しました',
+        variant: 'destructive',
+      })
+    },
+  })
+}
+
+// タスク管理フック
+export function useTask(id: number) {
+  return useQuery({
+    queryKey: QueryKeys.tasks.detail(id),
+    queryFn: () => api.tasks.get(id),
+    enabled: !!id,
+  })
+}
+
+export function useTasks(params: Generated.TaskListParams = {}) {
+  return useQuery({
+    queryKey: QueryKeys.tasks.list(params),
+    queryFn: () => api.tasks.list(params),
+    staleTime: 1000 * 60 * 2, // 2分（タスクは更新頻度が高い）
+    refetchOnWindowFocus: true,
+  })
+}
+
+export function useCreateTask() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: api.tasks.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QueryKeys.tasks.all })
+      toast({
+        title: '成功',
+        description: 'タスクが作成されました',
+      })
+    },
+  })
+}
+
+// メッセージ管理フック
+export function useMessages(params: Generated.MessageListParams = {}) {
+  return useQuery({
+    queryKey: QueryKeys.messages.list(params),
+    queryFn: () => api.messages.list(params),
+    staleTime: 1000 * 30, // 30秒（リアルタイム性重視）
+    refetchInterval: 1000 * 30,
+  })
+}
+
+export function useSendMessage() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: api.messages.send,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QueryKeys.messages.all })
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'エラー',
+        description: error.message || 'メッセージの送信に失敗しました',
+        variant: 'destructive',
+      })
+    },
+  })
+}
 ```
 
 ### 6.4.2 React Query設定
@@ -1646,11 +2040,13 @@ export class ErrorBoundary extends React.Component<
 
 本章で構築したNext.jsフロントエンド基盤により：
 
-1. **モダンな開発環境** - Next.js 15 App Router、TypeScript、Tailwind CSS
-2. **静的エクスポート対応** - 高速配信、Node.js不要、Nginxのみで動作
-3. **RPC接続アーキテクチャ** - Nginx経由でREST API → gRPC通信
-4. **堅牢な認証システム** - JWTトークン、リフレッシュトークン、認証ミドルウェア
-5. **効率的な状態管理** - Zustand、React Query、カスタムフック
-6. **再利用可能なUI** - shadcn/ui、コンポーネント設計
+1. **契約駆動開発統合** - Go-Zero契約ファイルからの型自動生成、リアルタイム同期
+2. **モダンな開発環境** - Next.js 15 App Router、TypeScript、Tailwind CSS
+3. **マイクロサービス対応** - UserService、TaskService、MessageService個別対応
+4. **静的エクスポート対応** - 高速配信、Node.js不要、Nginxのみで動作
+5. **型安全なAPI通信** - 自動生成型、コンパイル時チェック、エラーハンドリング
+6. **堅牢な認証システム** - JWTトークン、リフレッシュトークン、認証ミドルウェア
+7. **効率的な状態管理** - Zustand、React Query v5、カスタムフック
+8. **再利用可能なUI** - shadcn/ui、コンポーネント設計
 
-**静的配信とRPC通信の最適化**により、高速でスケーラブルなフロントエンド基盤が整いました。次章では、この基盤を活用した契約駆動開発とAPI統合について詳しく解説します。
+**契約駆動開発とマイクロサービス最適化**により、Go-Zeroバックエンドと完全に統合された高速でスケーラブルなフロントエンド基盤が整いました。開発時は型安全性を確保し、本番では静的配信による高速アクセスを実現します。

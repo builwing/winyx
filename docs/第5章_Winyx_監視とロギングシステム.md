@@ -46,16 +46,18 @@
 
 ## 第2節 ロギングアーキテクチャ
 
-### 5.2.1 Go-Zero ロギング設定
+### 5.2.1 Go-Zero ロギング設定（CLAUDE.md規約準拠）
 
-- [ ] Go-Zero APIのログ設定
+- [ ] UserServiceのログ設定
 ```bash
-vim /var/www/winyx/backend/test_api/etc/test_api-api.yaml
+vim /var/www/winyx/backend/user_service/etc/user_service-api.yaml
 ```
 
 ```yaml
+Name: user_service
+
 Log:
-  ServiceName: test-api
+  ServiceName: user_service
   Mode: file  # console, file, volume
   Path: /var/log/winyx/api
   Level: info  # debug, info, error, severe
@@ -70,11 +72,24 @@ Log:
   MaxBackups: 30
   MaxAge: 7       # days
   Compress: true
+
+# Prometheus設定（Go-Zero内蔵）
+Prometheus:
+  Host: 0.0.0.0
+  Port: 9091
+  Path: /metrics
+
+# Telemetry設定
+Telemetry:
+  Name: user_service
+  Endpoint: http://localhost:14268/api/traces
+  Sampler: 1.0
+  Batcher: jaeger
 ```
 
 - [ ] カスタムログミドルウェアの実装
 ```bash
-vim /var/www/winyx/backend/test_api/internal/middleware/logmiddleware.go
+vim /var/www/winyx/backend/user_service/internal/middleware/logmiddleware.go
 ```
 
 ```go
@@ -374,25 +389,49 @@ scrape_configs:
         target_label: instance
         replacement: 'winyx-server'
 
-  # Go-Zero API
-  - job_name: 'go-zero-api'
+  # UserService（REST API）
+  - job_name: 'user_service_api'
     metrics_path: '/metrics'
     static_configs:
-      - targets: ['localhost:9101']
+      - targets: ['localhost:9091']
+    scrape_interval: 15s
     relabel_configs:
       - source_labels: [__address__]
         target_label: service
-        replacement: 'test-api'
+        replacement: 'user_service_api'
 
-  # Go-Zero RPC
-  - job_name: 'go-zero-rpc'
+  # UserService（RPC）
+  - job_name: 'user_service_rpc'
     metrics_path: '/metrics'
     static_configs:
-      - targets: ['localhost:9102']
+      - targets: ['localhost:9092']
+    scrape_interval: 15s
     relabel_configs:
       - source_labels: [__address__]
         target_label: service
-        replacement: 'user-rpc'
+        replacement: 'user_service_rpc'
+
+  # TaskService（将来実装）
+  - job_name: 'task_service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['localhost:9093']
+    scrape_interval: 15s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'task_service'
+
+  # MessageService（将来実装）
+  - job_name: 'message_service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['localhost:9094']
+    scrape_interval: 15s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'message_service'
 
   # MySQL Exporter
   - job_name: 'mysql'
@@ -1553,6 +1592,453 @@ fi
 
 ---
 
+## 第4節 契約駆動開発プロセスの監視
+
+### 5.4.1 API契約変更の監視
+
+#### 契約ファイル変更検知システム
+
+- [ ] 契約ファイル変更監視スクリプトの作成
+
+```bash
+vim /var/www/winyx/scripts/monitor_contracts.sh
+```
+
+```bash
+#!/bin/bash
+# 契約ファイル変更監視スクリプト
+
+WATCH_DIR="/var/www/winyx/contracts"
+LOG_FILE="/var/log/winyx/contract-changes.log"
+PROMETHEUS_PUSHGATEWAY="http://localhost:9091"
+
+# ログディレクトリ作成
+mkdir -p $(dirname "$LOG_FILE")
+
+echo "Starting contract file monitoring for $WATCH_DIR"
+
+inotifywait -m -r -e modify,create,delete \
+  --format '%T %w%f %e' \
+  --timefmt '%Y-%m-%d %H:%M:%S' \
+  "$WATCH_DIR" | while read timestamp file event
+do
+    echo "[$timestamp] Contract file $event: $file" >> "$LOG_FILE"
+    
+    # サービス名を抽出
+    service_name=$(echo "$file" | sed 's|.*/contracts/\([^/]*\)/.*|\1|')
+    file_type=$(basename "$file" | sed 's/.*\.\(.*\)/\1/')
+    
+    # Prometheusメトリクスを送信
+    curl -X POST "$PROMETHEUS_PUSHGATEWAY/metrics/job/contract_monitor" \
+      --data-binary "contract_file_changes_total{service=\"$service_name\",file_type=\"$file_type\",event=\"$event\"} 1"
+    
+    # 自動生成トリガー（.apiファイルの変更時）
+    if [[ "$file" == *.api ]] && [[ "$event" == "MODIFY" ]]; then
+        echo "[$timestamp] Triggering code generation for $file" >> "$LOG_FILE"
+        /var/www/winyx/scripts/regenerate_service.sh "$service_name" "$file"
+    fi
+    
+    # .protoファイルの変更時
+    if [[ "$file" == *.proto ]] && [[ "$event" == "MODIFY" ]]; then
+        echo "[$timestamp] Triggering RPC generation for $file" >> "$LOG_FILE"
+        /var/www/winyx/scripts/regenerate_rpc.sh "$service_name" "$file"
+    fi
+done
+```
+
+- [ ] 実行権限の付与
+
+```bash
+chmod +x /var/www/winyx/scripts/monitor_contracts.sh
+```
+
+### 5.4.2 自動生成プロセスの監視
+
+#### goctl生成プロセスの監視メトリクス
+
+- [ ] 生成プロセス監視スクリプトの作成
+
+```bash
+vim /var/www/winyx/scripts/monitor_generation.go
+```
+
+```go
+package main
+
+import (
+    "fmt"
+    "log"
+    "net/http"
+    "os/exec"
+    "time"
+    
+    "github.com/prometheus/client_golang/prometheus"
+    "github.com/prometheus/client_golang/prometheus/promauto"
+    "github.com/prometheus/client_golang/prometheus/promhttp"
+)
+
+var (
+    generationTotal = promauto.NewCounterVec(
+        prometheus.CounterOpts{
+            Name: "goctl_generation_total",
+            Help: "Total number of goctl generations",
+        },
+        []string{"service", "type", "status"},
+    )
+    
+    generationDuration = promauto.NewHistogramVec(
+        prometheus.HistogramOpts{
+            Name: "goctl_generation_duration_seconds",
+            Help: "Duration of goctl generation process",
+            Buckets: prometheus.DefBuckets,
+        },
+        []string{"service", "type"},
+    )
+    
+    contractValidation = promauto.NewCounterVec(
+        prometheus.CounterOpts{
+            Name: "contract_validation_total",
+            Help: "Total number of contract validations",
+        },
+        []string{"service", "file_type", "result"},
+    )
+)
+
+func monitorGeneration(service, genType string, fn func() error) error {
+    timer := prometheus.NewTimer(generationDuration.WithLabelValues(service, genType))
+    defer timer.ObserveDuration()
+    
+    start := time.Now()
+    log.Printf("Starting %s generation for %s", genType, service)
+    
+    err := fn()
+    
+    status := "success"
+    if err != nil {
+        status = "failure"
+        log.Printf("Generation failed for %s/%s: %v", service, genType, err)
+    } else {
+        log.Printf("Generation completed for %s/%s in %v", service, genType, time.Since(start))
+    }
+    
+    generationTotal.WithLabelValues(service, genType, status).Inc()
+    return err
+}
+
+func validateContract(service, fileType, filePath string) error {
+    var cmd *exec.Cmd
+    
+    switch fileType {
+    case "api":
+        // API契約の検証
+        cmd = exec.Command("goctl", "api", "validate", "-api", filePath)
+    case "proto":
+        // Proto契約の検証
+        cmd = exec.Command("protoc", "--proto_path=.", "--dry-run", filePath)
+    default:
+        return fmt.Errorf("unknown file type: %s", fileType)
+    }
+    
+    err := cmd.Run()
+    
+    result := "success"
+    if err != nil {
+        result = "failure"
+    }
+    
+    contractValidation.WithLabelValues(service, fileType, result).Inc()
+    return err
+}
+
+func main() {
+    // メトリクスエンドポイントを公開
+    http.Handle("/metrics", promhttp.Handler())
+    
+    go func() {
+        log.Println("Metrics server starting on :9095")
+        log.Fatal(http.ListenAndServe(":9095", nil))
+    }()
+    
+    // メイン処理（実際の使用時は適切に実装）
+    select {}
+}
+```
+
+### 5.4.3 破壊的変更検知システム
+
+#### API互換性チェック
+
+- [ ] 破壊的変更検知スクリプトの作成
+
+```bash
+vim /var/www/winyx/scripts/check_breaking_changes.sh
+```
+
+```bash
+#!/bin/bash
+# API破壊的変更検知スクリプト
+
+SERVICE_NAME=$1
+NEW_CONTRACT=$2
+OLD_CONTRACT=$3
+
+if [ -z "$SERVICE_NAME" ] || [ -z "$NEW_CONTRACT" ] || [ -z "$OLD_CONTRACT" ]; then
+    echo "Usage: $0 <service_name> <new_contract> <old_contract>"
+    exit 1
+fi
+
+LOG_FILE="/var/log/winyx/breaking-changes.log"
+TEMP_DIR="/tmp/contract_check_$$"
+
+mkdir -p "$TEMP_DIR"
+mkdir -p $(dirname "$LOG_FILE")
+
+echo "[$SERVICE_NAME] Checking for breaking changes: $NEW_CONTRACT vs $OLD_CONTRACT" >> "$LOG_FILE"
+
+# API契約の場合
+if [[ "$NEW_CONTRACT" == *.api ]]; then
+    # OpenAPI仕様を生成
+    cd "$TEMP_DIR"
+    
+    goctl api plugin -plugin goctl-swagger="swagger -filename old.json" -api "$OLD_CONTRACT" -dir .
+    goctl api plugin -plugin goctl-swagger="swagger -filename new.json" -api "$NEW_CONTRACT" -dir .
+    
+    # 破壊的変更をチェック
+    npx oasdiff breaking old.json new.json > breaking_changes.txt 2>&1
+    
+    if [ $? -eq 0 ]; then
+        echo "[$SERVICE_NAME] No breaking changes detected" >> "$LOG_FILE"
+        
+        # Prometheusメトリクス送信
+        curl -X POST "http://localhost:9091/metrics/job/breaking_changes" \
+          --data-binary "api_breaking_changes_total{service=\"$SERVICE_NAME\",detected=\"false\"} 1"
+    else
+        echo "[$SERVICE_NAME] Breaking changes detected:" >> "$LOG_FILE"
+        cat breaking_changes.txt >> "$LOG_FILE"
+        
+        # Prometheusメトリクス送信
+        curl -X POST "http://localhost:9091/metrics/job/breaking_changes" \
+          --data-binary "api_breaking_changes_total{service=\"$SERVICE_NAME\",detected=\"true\"} 1"
+        
+        # アラート送信（Slack、メールなど）
+        /var/www/winyx/scripts/send_alert.sh "Breaking changes detected in $SERVICE_NAME" "$(cat breaking_changes.txt)"
+    fi
+fi
+
+# Proto契約の場合
+if [[ "$NEW_CONTRACT" == *.proto ]]; then
+    # buf を使用して後方互換性をチェック
+    cd "$TEMP_DIR"
+    
+    buf breaking "$NEW_CONTRACT" --against "$OLD_CONTRACT" > proto_breaking.txt 2>&1
+    
+    if [ $? -eq 0 ]; then
+        echo "[$SERVICE_NAME] No proto breaking changes detected" >> "$LOG_FILE"
+    else
+        echo "[$SERVICE_NAME] Proto breaking changes detected:" >> "$LOG_FILE"
+        cat proto_breaking.txt >> "$LOG_FILE"
+        
+        # アラート送信
+        /var/www/winyx/scripts/send_alert.sh "Proto breaking changes in $SERVICE_NAME" "$(cat proto_breaking.txt)"
+    fi
+fi
+
+# クリーンアップ
+rm -rf "$TEMP_DIR"
+```
+
+> 目的：契約変更による破壊的変更を自動検知し、品質を保証
+
+### 5.4.4 生成プロセスのsystemdサービス化
+
+- [ ] 契約監視サービスの作成
+
+```bash
+sudo vim /etc/systemd/system/winyx-contract-monitor.service
+```
+
+```ini
+[Unit]
+Description=Winyx Contract Monitor Service
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/winyx
+ExecStart=/var/www/winyx/scripts/monitor_contracts.sh
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=winyx-contract-monitor
+
+[Install]
+WantedBy=multi-user.target
+```
+
+- [ ] サービスの有効化
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable winyx-contract-monitor
+sudo systemctl start winyx-contract-monitor
+```
+
+---
+
+## 第5節 Go-Zero専用アラートルール
+
+### 5.5.1 Go-Zero サービス監視アラート
+
+- [ ] Go-Zero専用アラートルールの作成
+
+```bash
+sudo vim /opt/prometheus/rules/go_zero_alerts.yml
+```
+
+```yaml
+groups:
+  - name: go_zero_services
+    interval: 30s
+    rules:
+      # サービス停止アラート
+      - alert: GoZeroServiceDown
+        expr: up{job=~".*_service.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "Go-Zero service {{ $labels.service }} is down"
+          description: "Service {{ $labels.service }} has been down for more than 1 minute"
+
+      # 高レスポンス時間
+      - alert: GoZeroHighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_ms_bucket{job=~".*_service.*"}[5m])) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "High latency in {{ $labels.service }}"
+          description: "95th percentile latency is {{ $value }}ms for service {{ $labels.service }}"
+
+      # エラー率
+      - alert: GoZeroHighErrorRate
+        expr: |
+          (
+            rate(http_request_errors_total{job=~".*_service.*"}[5m])
+            /
+            rate(http_requests_total{job=~".*_service.*"}[5m])
+          ) > 0.05
+        for: 3m
+        labels:
+          severity: warning
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "High error rate in {{ $labels.service }}"
+          description: "Error rate is {{ $value | humanizePercentage }} for service {{ $labels.service }}"
+
+      # RPC接続エラー
+      - alert: GoZeroRPCConnectionError
+        expr: rate(grpc_client_conn_errors_total{job=~".*_service.*"}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "RPC connection errors in {{ $labels.service }}"
+          description: "RPC connection error rate is {{ $value }} for service {{ $labels.service }}"
+
+      # 契約変更アラート
+      - alert: ContractBreakingChanges
+        expr: api_breaking_changes_total{detected="true"} > 0
+        for: 0s
+        labels:
+          severity: critical
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "Breaking changes detected in {{ $labels.service }}"
+          description: "API breaking changes detected in service {{ $labels.service }}"
+
+      # 生成失敗アラート
+      - alert: GoZeroGenerationFailure
+        expr: increase(goctl_generation_total{status="failure"}[10m]) > 0
+        for: 0s
+        labels:
+          severity: warning
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "Code generation failure in {{ $labels.service }}"
+          description: "goctl generation failed for {{ $labels.type }} in service {{ $labels.service }}"
+
+  - name: contract_monitoring
+    interval: 1m
+    rules:
+      # 契約ファイル変更率
+      - alert: HighContractChangeRate
+        expr: rate(contract_file_changes_total[1h]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High contract change rate detected"
+          description: "Contract files are being modified at a rate of {{ $value }} changes per hour"
+```
+
+### 5.5.2 アラート通知設定
+
+- [ ] Alertmanager設定の更新
+
+```bash
+sudo vim /opt/alertmanager/alertmanager.yml
+```
+
+```yaml
+route:
+  group_by: ['alertname', 'service']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: 'default'
+  routes:
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+    - match:
+        alertname: ContractBreakingChanges
+      receiver: 'contract-alerts'
+
+receivers:
+  - name: 'default'
+    slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#winyx-alerts'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+
+  - name: 'critical-alerts'
+    slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#winyx-critical'
+        text: '🚨 CRITICAL: {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+    email_configs:
+      - to: 'admin@winyx.jp'
+        subject: 'Winyx Critical Alert'
+        body: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+
+  - name: 'contract-alerts'
+    slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#winyx-contracts'
+        text: '⚠️ Contract Issue: {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+```
+
+> 目的：Go-Zero固有の問題と契約駆動開発プロセスの異常を迅速に検知・通知
+
+---
+
 ## まとめ
 
 本章で構築した監視とロギングシステムにより：
@@ -1562,5 +2048,19 @@ fi
 3. **迅速なトラブルシューティング** - 構造化ログと分散トレーシング
 4. **パフォーマンス最適化** - 詳細なメトリクスとAPMによるボトルネック特定
 5. **信頼性の向上** - バックアップ監視と災害復旧の自動化
+6. **契約駆動開発の品質保証**（新規追加）- 契約変更の監視と破壊的変更の自動検知
+7. **Go-Zero特化監視**（新規追加）- マイクロサービスとRPC通信の専用メトリクス
+
+### 主要変更点（Go-Zero対応）
+
+| 項目 | 変更前 | 変更後 |
+|------|--------|--------|
+| **サービス名** | test_api | user_service（CLAUDE.md規約） |
+| **監視対象** | 単一サービス | マイクロサービス対応 |
+| **メトリクス** | 汎用的な監視 | Go-Zero内蔵Prometheus |
+| **契約監視** | なし | 契約ファイル変更検知システム |
+| **アラート** | 基本的なアラート | Go-Zero専用＋契約変更アラート |
+
+これらの改良により、Go-Zero契約駆動開発における品質と信頼性が大幅に向上します。
 
 継続的な改善のため、定期的にアラート設定の見直しとダッシュボードの更新を行うことを推奨します。

@@ -25,9 +25,19 @@ sudo vim /etc/nginx/sites-available/winyx
 ```nginx
 # Winyx Nginx Configuration
 
-# バックエンドAPIのアップストリーム定義
-upstream backend_api {
-    server 127.0.0.1:8888;
+# マイクロサービス対応：複数バックエンドAPIのアップストリーム定義
+upstream user_service {
+    server 127.0.0.1:8888;  # UserService
+    keepalive 32;
+}
+
+upstream task_service {
+    server 127.0.0.1:8889;  # TaskService（将来実装）
+    keepalive 32;
+}
+
+upstream message_service {
+    server 127.0.0.1:8890;  # MessageService（将来実装）
     keepalive 32;
 }
 
@@ -93,9 +103,48 @@ server {
     # セキュリティヘッダー
     include /etc/nginx/snippets/security-headers.conf;
     
-    # APIリバースプロキシ（バックエンドへ転送）
-    location / {
-        proxy_pass http://backend_api;
+    # マイクロサービスAPIリバースプロキシ（パスベースルーティング）
+    location /api/v1/users {
+        proxy_pass http://user_service;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    
+    location /api/v1/orgs {
+        proxy_pass http://user_service;  # 組織管理もUserServiceが担当
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    
+    location /api/v1/tasks {
+        proxy_pass http://task_service;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    
+    location /api/v1/messages {
+        proxy_pass http://message_service;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    
+    # 認証関連は常にUserServiceへ
+    location ~ ^/api/v1/(login|register|logout) {
+        proxy_pass http://user_service;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -959,16 +1008,442 @@ curl -I https://winyx.jp/docs/swagger.json
 
 ---
 
+## 第4節 契約駆動開発のCI/CD設定
+
+### 3.4.1 GitHub Actionsによる契約ファイル監視と自動生成
+
+#### ワークフローファイルの作成
+
+- [ ] 契約ファイル変更時の自動生成ワークフロー
+
+```yaml
+# .github/workflows/contract-driven-deploy.yml
+name: Contract-Driven Deployment
+
+on:
+  push:
+    paths:
+      - 'contracts/**/*.api'
+      - 'contracts/**/*.proto'
+    branches:
+      - main
+      - develop
+
+jobs:
+  generate-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.24'
+    
+    - name: Install goctl
+      run: |
+        go install github.com/zeromicro/go-zero/tools/goctl@latest
+        
+    - name: Generate UserService Code
+      if: contains(github.event.head_commit.message, 'user.api')
+      run: |
+        cd backend/user_service
+        goctl api go -api ../../contracts/user_service/user.api -dir . -style go_zero
+        
+    - name: Generate Models
+      run: |
+        cd backend/user_service
+        goctl model mysql ddl -src ../../contracts/api/winyx_core_schema_no_fk.sql -dir ./internal/model -c
+        
+    - name: Build Services
+      run: |
+        cd backend/user_service
+        go mod tidy
+        go build -o user_service user_service.go
+        
+    - name: Deploy to VPS
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        script: |
+          cd /var/www/winyx
+          git pull origin main
+          cd backend/user_service
+          go build -o user_service user_service.go
+          sudo systemctl restart winyx-user
+```
+
+> 目的：契約ファイル変更を検知して自動的にコード生成とデプロイを実行
+
+### 3.4.2 契約ファイルの検証パイプライン
+
+#### 破壊的変更の検出
+
+- [ ] 契約変更の検証ワークフロー
+
+```yaml
+# .github/workflows/contract-validation.yml
+name: Contract Validation
+
+on:
+  pull_request:
+    paths:
+      - 'contracts/**/*.api'
+      - 'contracts/**/*.proto'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    
+    - name: Install Tools
+      run: |
+        go install github.com/zeromicro/go-zero/tools/goctl@latest
+        npm install -g @apidevtools/swagger-cli
+        
+    - name: Generate OpenAPI Spec
+      run: |
+        for api_file in contracts/**/*.api; do
+          service_name=$(basename $(dirname $api_file))
+          goctl api plugin -plugin goctl-swagger="swagger -filename ${service_name}.json" -api $api_file -dir ./temp
+        done
+        
+    - name: Check Breaking Changes
+      run: |
+        # 前のバージョンと比較
+        for spec in temp/*.json; do
+          service_name=$(basename $spec .json)
+          if [ -f "docs/${service_name}.json" ]; then
+            npx oasdiff breaking docs/${service_name}.json $spec
+          fi
+        done
+        
+    - name: Comment PR
+      if: failure()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: '⚠️ 破壊的変更が検出されました。APIの後方互換性を確認してください。'
+          })
+```
+
+> 目的：PRで契約ファイルの破壊的変更を自動検出
+
+### 3.4.3 Blue-Greenデプロイメント戦略
+
+#### デプロイメントスクリプト
+
+- [ ] Blue-Greenデプロイスクリプトの作成
+
+```bash
+vim /var/www/winyx/scripts/blue_green_deploy.sh
+```
+
+```bash
+#!/bin/bash
+# Blue-Green Deployment Script for Go-Zero Services
+
+SERVICE_NAME=$1
+NEW_PORT=$2
+OLD_PORT=$3
+
+if [ -z "$SERVICE_NAME" ] || [ -z "$NEW_PORT" ] || [ -z "$OLD_PORT" ]; then
+    echo "Usage: $0 <service_name> <new_port> <old_port>"
+    exit 1
+fi
+
+echo "Starting Blue-Green deployment for $SERVICE_NAME"
+
+# 1. 新バージョンを別ポートで起動（Green）
+cd /var/www/winyx/backend/${SERVICE_NAME}
+./scripts/start_green.sh $NEW_PORT
+
+# 2. ヘルスチェック
+for i in {1..30}; do
+    if curl -f http://127.0.0.1:${NEW_PORT}/health > /dev/null 2>&1; then
+        echo "Green environment is healthy"
+        break
+    fi
+    echo "Waiting for green environment... ($i/30)"
+    sleep 2
+done
+
+# 3. Nginxの設定を新ポートに切り替え
+sudo sed -i "s/127.0.0.1:${OLD_PORT}/127.0.0.1:${NEW_PORT}/g" /etc/nginx/sites-available/winyx
+sudo nginx -t && sudo nginx -s reload
+
+# 4. 旧バージョンを停止（Blue）
+sleep 5
+./scripts/stop_blue.sh $OLD_PORT
+
+echo "Blue-Green deployment completed successfully"
+```
+
+> 目的：ダウンタイムなしでサービスを更新
+
+---
+
+## 第5節 Go-Zeroサービス監視
+
+### 3.5.1 Prometheusメトリクス設定
+
+#### Go-Zeroメトリクスエンドポイントの有効化
+
+- [ ] サービス設定にメトリクスを追加
+
+```yaml
+# etc/user_service-api.yaml に追加
+Name: user_service
+Host: 0.0.0.0
+Port: 8888
+
+# Prometheus設定
+Prometheus:
+  Host: 0.0.0.0
+  Port: 9091
+  Path: /metrics
+
+# Telemetry設定
+Telemetry:
+  Name: user_service
+  Endpoint: http://localhost:14268/api/traces
+  Sampler: 1.0
+  Batcher: jaeger
+```
+
+#### Prometheusの設定
+
+- [ ] Prometheus設定ファイルの更新
+
+```yaml
+# /etc/prometheus/prometheus.yml に追加
+scrape_configs:
+  - job_name: 'user_service'
+    static_configs:
+      - targets: ['localhost:9091']
+        labels:
+          service: 'user_service'
+          
+  - job_name: 'task_service'
+    static_configs:
+      - targets: ['localhost:9092']
+        labels:
+          service: 'task_service'
+          
+  - job_name: 'message_service'
+    static_configs:
+      - targets: ['localhost:9093']
+        labels:
+          service: 'message_service'
+```
+
+> 目的：Go-Zeroサービスのメトリクスを収集
+
+### 3.5.2 ヘルスチェックエンドポイント
+
+#### ヘルスチェックハンドラーの実装
+
+- [ ] 各サービスにヘルスチェックを追加
+
+```go
+// internal/handler/healthhandler.go
+package handler
+
+import (
+    "net/http"
+    
+    "github.com/zeromicro/go-zero/rest/httpx"
+)
+
+type HealthResp struct {
+    Status    string `json:"status"`
+    Service   string `json:"service"`
+    Version   string `json:"version"`
+    Timestamp int64  `json:"timestamp"`
+}
+
+func HealthHandler() http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        resp := HealthResp{
+            Status:    "healthy",
+            Service:   "user_service",
+            Version:   "v1.0.0",
+            Timestamp: time.Now().Unix(),
+        }
+        httpx.OkJson(w, resp)
+    }
+}
+```
+
+#### ルートへの追加
+
+```go
+// internal/handler/routes.go に追加
+server.AddRoute(
+    rest.Route{
+        Method:  http.MethodGet,
+        Path:    "/health",
+        Handler: HealthHandler(),
+    },
+)
+```
+
+> 目的：サービスの生存確認とロードバランサー連携
+
+### 3.5.3 分散トレーシング（Jaeger）
+
+#### Jaegerのインストールと設定
+
+- [ ] Jaegerの起動
+
+```bash
+# Dockerでjaegerを起動
+docker run -d --name jaeger \
+  -e COLLECTOR_ZIPKIN_HOST_PORT=:9411 \
+  -p 5775:5775/udp \
+  -p 6831:6831/udp \
+  -p 6832:6832/udp \
+  -p 5778:5778 \
+  -p 16686:16686 \
+  -p 14268:14268 \
+  -p 14250:14250 \
+  -p 9411:9411 \
+  jaegertracing/all-in-one:latest
+```
+
+#### トレーシングの統合
+
+- [ ] ServiceContextにトレーシング設定を追加
+
+```go
+// internal/svc/servicecontext.go
+import (
+    "github.com/zeromicro/go-zero/core/trace"
+)
+
+func NewServiceContext(c config.Config) *ServiceContext {
+    // トレーシング初期化
+    trace.StartAgent(trace.Config{
+        Name:     c.Telemetry.Name,
+        Endpoint: c.Telemetry.Endpoint,
+        Sampler:  c.Telemetry.Sampler,
+        Batcher:  c.Telemetry.Batcher,
+    })
+    
+    // ... 既存のコード
+}
+```
+
+> 目的：マイクロサービス間のリクエストフローを可視化
+
+### 3.5.4 Grafanaダッシュボードの設定
+
+#### Go-Zero専用ダッシュボード
+
+- [ ] Grafanaダッシュボードのインポート
+
+```bash
+# Go-Zero用ダッシュボードJSONをダウンロード
+curl -o /tmp/go-zero-dashboard.json \
+  https://raw.githubusercontent.com/zeromicro/go-zero/master/grafana/dashboard.json
+
+# GrafanaのWeb UIからインポート
+# Settings > Dashboard > Import > Upload JSON file
+```
+
+#### アラートルールの設定
+
+- [ ] 重要メトリクスのアラート設定
+
+```yaml
+# /etc/prometheus/alert_rules.yml
+groups:
+  - name: go_zero_alerts
+    interval: 30s
+    rules:
+      - alert: ServiceDown
+        expr: up{job=~".*_service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.service }} is down"
+          
+      - alert: HighErrorRate
+        expr: rate(http_server_requests_total{status=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate in {{ $labels.service }}"
+          
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(http_server_duration_ms_bucket[5m])) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency in {{ $labels.service }}"
+```
+
+> 目的：サービス異常を早期検知して通知
+
+---
+
 ## まとめ
 
 第3章では、Winyx本番環境の運用に必要な以下の要素を設定しました：
 
-1. **Webサーバー設定**: Nginx、SSL/TLS、セキュリティヘッダー
-2. **セキュリティ強化**: ファイアウォール、SSH、Fail2ban
-3. **データベース最適化**: チューニング、バックアップ
-4. **監視システム**: Prometheus、Grafana、アラート
-5. **CI/CD**: GitHub Actions、自動デプロイ
-6. **バックアップ戦略**: 完全バックアップ、リカバリ手順
-7. **パフォーマンス最適化**: CDN、キャッシュ、インデックス
+1. **Webサーバー設定**: 
+   - マイクロサービス対応Nginx設定
+   - SSL/TLS、セキュリティヘッダー
+   - パスベースルーティング
+
+2. **セキュリティ強化**: 
+   - ファイアウォール、SSH、Fail2ban
+   - IP制限、認証強化
+
+3. **データベース最適化**: 
+   - チューニング、自動バックアップ
+   - マイクロサービス別DB設定
+
+4. **契約駆動開発CI/CD**（新規追加）:
+   - GitHub Actionsによる自動生成
+   - 契約変更の検証パイプライン
+   - Blue-Greenデプロイメント
+
+5. **Go-Zeroサービス監視**（新規追加）:
+   - Prometheusメトリクス収集
+   - ヘルスチェックエンドポイント
+   - Jaegerによる分散トレーシング
+   - Grafanaダッシュボード
+
+6. **バックアップ戦略**: 
+   - 完全バックアップ、リカバリ手順
+   - 定期自動化
+
+7. **パフォーマンス最適化**: 
+   - CDN、キャッシュ、インデックス
+   - ロードバランシング
+
+### 主要変更点（Go-Zero対応）
+
+| 項目 | 変更前 | 変更後 |
+|------|--------|--------|
+| **Nginx設定** | 単一サービス（8888） | マルチサービス対応 |
+| **CI/CD** | 基本的なデプロイ | 契約駆動型自動生成 |
+| **監視** | 汎用的な監視 | Go-Zero専用メトリクス |
+| **デプロイ戦略** | 通常のデプロイ | Blue-Greenデプロイ |
 
 これらの設定により、安全で高パフォーマンスな本番環境の運用が可能になります。

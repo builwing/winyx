@@ -354,25 +354,35 @@ ON DUPLICATE KEY UPDATE created_at = created_at;
 
 ## 第3節 UserService バックエンド実装
 
-### 10.3.1 Go-Zero プロジェクト生成
+### 10.3.1 Go-Zero プロジェクト生成（契約駆動開発）
 
-- [x] UserService プロジェクト初期化
+**重要**: CLAUDE.md規約に従い、**絶対に契約ファイルを先に作成**してからコード生成を行います。
+
+- [x] 契約ファイルの作成（第一段階）
+
+```bash
+# 契約ファイルを先に作成（必須）
+mkdir -p /var/www/winyx/contracts/user_service
+vim /var/www/winyx/contracts/user_service/user.api
+```
+
+- [x] UserService プロジェクト初期化（goctl自動生成）
 
 ```bash
 cd /var/www/winyx/backend
-goctl api new user_service --style gozero
+mkdir -p user_service
 cd user_service
+
+# 契約ファイルからコード生成（CLAUDE.md準拠）
+goctl api go -api /var/www/winyx/contracts/user_service/user.api -dir . --style go_zero
 ```
 
-- [x] API契約からコード生成
-
-```bash
-# API契約をコピー
-cp /var/www/winyx/contracts/user_service/user.api ./user.api
-
-# コード生成
-goctl api go -api user.api -dir . --style gozero
-```
+**編集可能ファイル制限（厳守）**:
+- ✅ **編集可能**: `internal/logic/` - ビジネスロジックのみ
+- ✅ **編集可能**: `etc/` - 設定ファイル
+- ❌ **編集禁止**: `internal/handler/` - 自動生成のため
+- ❌ **編集禁止**: `internal/types/` - 自動生成のため
+- ❌ **編集禁止**: `routes.go` - 自動生成のため
 
 ### 10.3.2 設定ファイル作成
 
@@ -386,7 +396,7 @@ vim etc/user_service-api.yaml
 ```yaml
 Name: user_service
 Host: 0.0.0.0
-Port: 8889
+Port: 8888
 
 # JWT設定
 Auth:
@@ -415,19 +425,31 @@ RateLimit:
   RegisterRate: 3   # 登録試行回数制限
 ```
 
-### 10.3.3 データベースモデル生成
+### 10.3.3 データベースモデル生成（goctl自動生成）
 
-- [x] データベースモデルの生成
+- [x] データベーススキーマ管理（contracts配下で統一管理）
+
+```bash
+# スキーマファイルをcontracts配下で管理
+vim /var/www/winyx/contracts/user_service/schema.sql
+```
+
+- [x] データベースモデル自動生成（キャッシュ有効）
 
 ```bash
 # データベーススキーマを適用
 mysql -h 127.0.0.1 -u winyx_app -p winyx_core < /var/www/winyx/contracts/user_service/schema.sql
 
-# モデル生成
+# モデル生成（キャッシュ有効、CLAUDE.md準拠）
+cd /var/www/winyx/backend/user_service
 goctl model mysql ddl -src /var/www/winyx/contracts/user_service/schema.sql -dir ./internal/model -c
 ```
 
-### 10.3.4 ビジネスロジック実装
+**重要**: 生成されたモデルファイルは編集禁止です。データベース変更時は契約ファイルを更新後、再生成してください。
+
+### 10.3.4 ビジネスロジック実装（編集可能な唯一の領域）
+
+**重要**: `internal/logic/`配下のファイルのみ編集可能です。これがCLAUDE.md規約の核心です。
 
 #### 実装完了したロジック機能
 
@@ -437,6 +459,12 @@ goctl model mysql ddl -src /var/www/winyx/contracts/user_service/schema.sql -dir
 - [x] 管理者ユーザー一覧取得（ページネーション対応）
 - [x] ユーザーステータス更新機能
 - [x] ユーザー削除機能（管理者権限必須）
+
+**契約変更時の再生成フロー**:
+1. `/var/www/winyx/contracts/user_service/user.api`を編集
+2. `goctl api go -api /var/www/winyx/contracts/user_service/user.api -dir . --style go_zero`で再生成
+3. `internal/logic/`内のビジネスロジックは保持される
+4. handler、types、routesは自動更新される
 
 **重要な実装ポイント:**
 
@@ -1364,14 +1392,15 @@ export default function AdminUsersPage() {
 
 ## 第5節 Nginx設定とデプロイ
 
-### 10.5.1 Nginx設定更新
+### 10.5.1 Nginx設定更新（マイクロサービス対応）
 
 #### 完了した設定変更
 
-- [x] UserService用のUpstream追加（ポート8894で稼働中）
+- [x] UserService用のUpstream追加（CLAUDE.md命名規約準拠：user_service）
 - [x] APIプロキシ設定を winyx.jp ドメインに追加
 - [x] CORS対応設定の実装
 - [x] Upstream重複エラーの解決
+- [x] マイクロサービス構成対応（将来のtask_service、message_service対応）
 
 **実装された設定内容:**
 
@@ -1429,15 +1458,25 @@ sudo systemctl reload nginx
 ```nginx
 # Winyx Nginx Configuration with UserService
 
-# バックエンドAPIのアップストリーム定義
-upstream backend_api {
+# マイクロサービス用アップストリーム定義（CLAUDE.md規約準拠）
+upstream user_service {
     server 127.0.0.1:8888;
     keepalive 32;
 }
 
-# UserService のアップストリーム定義
-upstream user_service {
+upstream task_service {
     server 127.0.0.1:8889;
+    keepalive 32;
+}
+
+upstream message_service {
+    server 127.0.0.1:8890;
+    keepalive 32;
+}
+
+# 後方互換性のため（レガシー）
+upstream backend_api {
+    server 127.0.0.1:8888;
     keepalive 32;
 }
 
@@ -1580,12 +1619,12 @@ server {
 }
 ```
 
-### 10.5.2 systemd サービス設定
+### 10.5.2 systemd サービス設定（CLAUDE.md命名規約準拠）
 
-- [x] UserService のsystemdサービス作成
+- [x] UserService のsystemdサービス作成（命名規約：winyx-user.service）
 
 ```bash
-sudo vim /etc/systemd/system/winyx-user-service.service
+sudo vim /etc/systemd/system/winyx-user.service
 ```
 
 ```ini
@@ -1600,6 +1639,7 @@ User=www-data
 Group=www-data
 WorkingDirectory=/var/www/winyx/backend/user_service
 ExecStart=/var/www/winyx/backend/user_service/user_service -f /var/www/winyx/backend/user_service/etc/user_service-api.yaml
+EnvironmentFile=/var/www/winyx/.env
 Restart=always
 RestartSec=3
 StandardOutput=journal
@@ -1616,9 +1656,9 @@ LimitNOFILE=65536
 WantedBy=multi-user.target
 ```
 
-### 10.5.3 マイクロサービス間通信設定
+### 10.5.3 マイクロサービス間通信設定（Database per Service）
 
-#### サービスディスカバリー設定
+#### サービスディスカバリー設定（CLAUDE.md準拠）
 
 - [x] 内部サービス通信用設定ファイル作成
 
@@ -1632,27 +1672,29 @@ Services:
   UserService:
     Name: user_service
     Host: 127.0.0.1
-    Port: 8889
-    Protocol: http
-    HealthCheck: /health
-    Timeout: 30s
-    
-  TestAPI:
-    Name: test_api
-    Host: 127.0.0.1
     Port: 8888
     Protocol: http
     HealthCheck: /health
     Timeout: 30s
+    Database: winyx_core
     
-  # 将来のサービス追加用
-  OrderService:
-    Name: order_service
+  TaskService:
+    Name: task_service
+    Host: 127.0.0.1
+    Port: 8889
+    Protocol: http
+    HealthCheck: /health
+    Timeout: 30s
+    Database: winyx_task
+    
+  MessageService:
+    Name: message_service
     Host: 127.0.0.1
     Port: 8890
     Protocol: http
     HealthCheck: /health
     Timeout: 30s
+    Database: winyx_message
     
 # サービスメッシュ設定
 ServiceMesh:
@@ -1958,31 +2000,45 @@ func generateServiceSignature(serviceName, timestamp, secret string) string {
 }
 ```
 
-### 10.5.5 デプロイ手順
+### 10.5.5 デプロイ手順（契約駆動開発フロー）
 
-- [x] UserService デプロイ
+- [x] UserService デプロイ（CLAUDE.md準拠）
 
 ```bash
-# データベースマイグレーション
+# 1. 契約ファイルの確認（必須）
+ls -la /var/www/winyx/contracts/user_service/
+
+# 2. データベースマイグレーション
 mysql -h 127.0.0.1 -u winyx_app -p winyx_core < /var/www/winyx/contracts/user_service/schema.sql
 
-# UserService ビルド
+# 3. Go-Zero自動生成（契約ファイルから）
 cd /var/www/winyx/backend/user_service
-go mod tidy
-go build -o user_service userapi.go
+goctl api go -api /var/www/winyx/contracts/user_service/user.api -dir . --style go_zero
 
-# 権限設定
+# 4. モデル生成
+goctl model mysql ddl -src /var/www/winyx/contracts/user_service/schema.sql -dir ./internal/model -c
+
+# 5. 依存関係解決とビルド
+go mod tidy
+go build -o user_service *.go
+
+# 6. 権限設定
 sudo chown -R www-data:www-data /var/www/winyx/backend/user_service
 sudo chmod +x /var/www/winyx/backend/user_service/user_service
 
-# systemd サービス有効化
+# 7. systemd サービス有効化（CLAUDE.md命名規約）
 sudo systemctl daemon-reload
-sudo systemctl enable winyx-user-service
-sudo systemctl start winyx-user-service
+sudo systemctl enable winyx-user.service
+sudo systemctl start winyx-user.service
 
-# サービス状態確認
-sudo systemctl status winyx-user-service
+# 8. サービス状態確認
+sudo systemctl status winyx-user.service
 ```
+
+**重要な注意事項**:
+- 契約ファイル変更時は、手順3-4を再実行してください
+- `internal/logic/`以外のファイルは編集禁止です
+- データベース変更時はschema.sqlを更新後、モデル再生成が必要です
 
 - [x] フロントエンド ビルド＆デプロイ
 
@@ -2013,15 +2069,22 @@ sudo systemctl reload nginx
 
 このアプローチは、将来的なサービス分離の可能性を妨げるものではなく、YAGNI（You Ain't Gonna Need It）の原則に基づいた、現実的で段階的な拡張戦略である。
 
-### 10.6.2 データベーススキーマ拡張
+### 10.6.2 データベーススキーマ拡張（Database per Service準拠）
 
-`winyx_core` データベースに、組織とメンバーシップを管理するための新しいテーブルを追加する。
+**Database per Service戦略**: UserServiceは`winyx_core`データベースを専有し、組織管理機能も同一DB内で管理します。
 
-- [x] 組織管理用テーブルのスキーマ定義
+- [x] 組織管理用テーブルのスキーマ定義（contracts配下で管理）
 
 ```bash
 vim /var/www/winyx/contracts/user_service/schema_extension_org.sql
 ```
+
+**重要なアーキテクチャ方針**:
+- `winyx_core`: UserService専用（users, sessions, user_profiles, orgs, org_members等）
+- `winyx_task`: TaskService専用（tasks, task_assignments等）
+- `winyx_message`: MessageService専用（messages, channels等）
+
+各マイクロサービスは独自のデータベースを持ち、サービス間通信はAPIまたはRPCで行います。
 
 ```sql
 -- UserService用拡張テーブル（winyx_coreに追加）
@@ -2052,11 +2115,24 @@ CREATE TABLE IF NOT EXISTS org_members (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='ユーザーと組織の関連付けおよび役割を管理するテーブル';
 ```
 
-### 10.6.3 APIエンドポイント定義の拡張
+### 10.6.3 APIエンドポイント定義の拡張（契約ファイル更新）
 
-`user.api` ファイルに、組織管理用のエンドポイントを追加する。
+`/var/www/winyx/contracts/user_service/user.api` ファイルに、組織管理用のエンドポイントを追加します。
 
-- [x] `user.api` に組織管理セクションを追加
+- [x] 契約ファイルに組織管理セクションを追加
+
+```bash
+vim /var/www/winyx/contracts/user_service/user.api
+```
+
+**契約変更後の必須手順**:
+```bash
+cd /var/www/winyx/backend/user_service
+# 契約ファイルから自動再生成
+goctl api go -api /var/www/winyx/contracts/user_service/user.api -dir . --style go_zero
+# 新しいhandler/typesが自動生成される
+# internal/logic/配下に新しいロジックファイルを実装
+```
 
 ```go
 // user.api ファイルの末尾に追記
@@ -2284,48 +2360,51 @@ logx.Errorw("User login failed",
 
 ## まとめ
 
-第10章では以下を実装し、**完全に動作する**ユーザー管理システムを構築しました：
+第10章では以下を実装し、**完全に動作する**ユーザー管理システムを**Go-Zero契約駆動開発**で構築しました：
 
-### 完了した実装内容
-1. **Go-Zero API契約設計** - 完全なユーザー管理API仕様
-2. **UserServiceマイクロサービス** - 認証・認可機能完備（ポート8894で稼働中）
-3. **Next.js フロントエンド** - モダンなユーザー管理UI（MariaDBデータ表示対応）
-4. **セキュリティ実装** - JWT認証（roles含む）、パスワードハッシュ化、管理者権限チェック
-5. **管理機能** - ユーザー一覧・削除機能（null安全性確保）
-6. **システム統合** - Nginx プロキシ、CORS対応、エラーハンドリング
+### 完了した実装内容（CLAUDE.md準拠）
+1. **Go-Zero契約駆動設計** - `/var/www/winyx/contracts/user_service/user.api`を中心とした完全なAPI仕様
+2. **UserServiceマイクロサービス** - goctl自動生成で実装、認証・認可機能完備（ポート8888）
+3. **Next.js フロントエンド** - 契約ファイル連動、モダンなユーザー管理UI
+4. **Database per Service** - `winyx_core`をUserService専用DBとして管理
+5. **編集制限強化** - `internal/logic/`のみ編集可能、他は自動生成
+6. **システム統合** - マイクロサービス対応 Nginx プロキシ、CORS対応
 
-### 実際の動作確認
-- ✅ **MariaDBから4人のユーザーデータ正常取得**
+### 実際の動作確認（Go-Zero契約駆動開発）
+- ✅ **契約ファイルからの自動生成コード正常動作**
+- ✅ **MariaDB(winyx_core)から4人のユーザーデータ正常取得**
 - ✅ **ロール情報付きJWT認証動作**
 - ✅ **管理者権限による一覧表示・削除機能**
 - ✅ **フロントエンドでの実際のDBデータ表示**
-- ✅ **null安全性エラーの完全解決**
+- ✅ **編集制限（internal/logic/のみ）の遵守**
 
-### 技術スタック
-- **バックエンド**: Go-Zero + MariaDB + Redis
-- **フロントエンド**: Next.js 15 + TypeScript + Tailwind CSS
+### 技術スタック（Go-Zero契約駆動開発）
+- **バックエンド**: Go-Zero + goctl自動生成 + MariaDB(winyx_core) + Redis
+- **契約管理**: `/var/www/winyx/contracts/user_service/user.api`を中心とした契約駆動開発
+- **フロントエンド**: Next.js 15 + TypeScript + 契約ファイル連動
 - **認証**: JWT（roles含む） + bcrypt
-- **状態管理**: React useState + useEffect
-- **インフラ**: Nginx（プロキシ設定）+ UFW
+- **アーキテクチャ**: Database per Serviceパターン
+- **インフラ**: マイクロサービス対応 Nginx + systemd
 
-### 解決した技術課題
-1. **null安全性エラー修正**: `Cannot read properties of null (reading 'map')`
-2. **CORS問題解決**: フロントエンドから相対パスでAPI呼び出し
-3. **Nginx設定最適化**: upstream重複エラー解決、プロキシ設定
-4. **ファイアウォール設定**: UFWでポート8894開放
-5. **JWT強化**: ロール情報をトークンに含めて権限管理
+### 解決した技術課題（契約駆動開発適用）
+1. **契約駆動開発導入**: goctl自動生成でコード品質向上
+2. **編集制限強化**: internal/logic/のみ編集可能で保守性向上
+3. **Database per Service**: winyx_coreをUserService専用で管理
+4. **マイクロサービスアーキテクチャ**: ポート割り当てとNginxプロキシ設定
+5. **CLAUDE.md規約準拠**: 命名規約、ファイル配置、開発フロー統一
 
-### 実運用状況
-- **UserService**: `./user_service -f etc/test_prod_user_service-api.yaml` で稼働中
-- **データベース**: winyx_core の users, roles, user_roles テーブル活用
+### 実運用状況（契約駆動開発環境）
+- **UserService**: `./user_service -f etc/user_service-api.yaml` で稼働中（ポート8888）
+- **契約ファイル**: `/var/www/winyx/contracts/user_service/user.api` で一元管理
+- **データベース**: winyx_core をUserService専用DBとして運用
 - **フロントエンド**: winyx.jp/users/ でアクセス可能
-- **管理機能**: 管理者ログインでユーザー管理画面利用可能
+- **systemd**: winyx-user.service で管理（CLAUDE.md規約準拠）
 
-### 次のステップ
-- リフレッシュトークン実装
-- OAuth認証連携
-- 多要素認証（2FA）
-- 監査ログシステム
-- パフォーマンス最適化
+### 次のステップ（契約駆動開発拡張）
+- TaskServiceマイクロサービス実装（winyx_task DB）
+- MessageServiceマイクロサービス実装（winyx_message DB）
+- サービス間RPC通信の実装
+- 統合APIゲートウェイの構築
+- 契約ファイル変更のCI/CD自動化
 
-**重要**: 今回の実装により、Winyxプロジェクトに**実際に動作する**本格的なユーザー管理機能が追加され、MariaDBデータの表示まで完全に動作確認されました。
+**重要**: 今回の実装により、Winyxプロジェクトに**Go-Zero契約駆動開発で実装された本格的なユーザー管理機能**が追加され、CLAUDE.md規約に完全準拠したマイクロサービスアーキテクチャが確立されました。

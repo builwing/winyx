@@ -31,12 +31,13 @@
 
 ## 第2節 Go-Zero RPCサービスの構築
 
-### 4.2.1 RPCサービスの定義
+### 4.2.1 RPCサービスの定義（契約駆動開発）
 
-- [ ] Proto定義ファイルの作成
+- [ ] Proto定義ファイルの作成（CLAUDE.md規約準拠）
 ```bash
-mkdir -p /var/www/winyx/contracts/rpc
-vim /var/www/winyx/contracts/rpc/user.proto
+# 契約ファイルはサービス別に管理
+mkdir -p /var/www/winyx/contracts/user_service
+vim /var/www/winyx/contracts/user_service/user.proto
 ```
 
 ```protobuf
@@ -71,26 +72,66 @@ service UserService {
 }
 ```
 
-### 4.2.2 RPCサービスの生成
+### 4.2.2 RPCサービスの生成（最新goctl形式）
 
 - [ ] Go-Zero RPCサービスの生成
 ```bash
 cd /var/www/winyx/backend
-goctl rpc protoc /var/www/winyx/contracts/rpc/user.proto \
-  --go_out=./user-rpc/types \
-  --go-grpc_out=./user-rpc/types \
-  --zrpc_out=./user-rpc
+mkdir -p user_rpc
+cd user_rpc
+
+# 最新のgoctl rpc生成コマンド
+goctl rpc protoc ../../contracts/user_service/user.proto \
+  --go_out=. \
+  --go-grpc_out=. \
+  --zrpc_out=. \
+  --style=go_zero
 ```
+
+> 目的：契約ファイルからRPCサービスコードを自動生成
+
+### 4.2.2.1 RPC編集可能ファイルと制限【重要】
+
+生成後のディレクトリ構造と編集制限：
+
+```
+user_rpc/
+├── etc/
+│   └── user.yaml           # ✅ 編集可能（設定）
+├── internal/
+│   ├── config/
+│   │   └── config.go       # ❌ 編集禁止（自動生成）
+│   ├── logic/              # ✅ 編集可能（ビジネスロジック）
+│   │   ├── get_user_logic.go
+│   │   └── list_users_logic.go
+│   ├── server/             # ❌ 編集禁止（自動生成）
+│   │   └── user_service_server.go
+│   ├── svc/                # ⚠️ 最小限の編集（DI設定）
+│   │   └── service_context.go
+│   └── pb/                 # ❌ 編集禁止（Protocol Buffers）
+│       ├── user.pb.go
+│       └── user_grpc.pb.go
+├── user_client/            # ❌ 編集禁止（クライアントコード）
+│   └── user.go
+└── user.go                 # ❌ 編集禁止（メインファイル）
+```
+
+**編集ルール**:
+- ✅ **編集可能**: ビジネスロジックと設定のみ
+- ❌ **編集禁止**: 再生成で上書きされるファイル
+- ⚠️ **条件付き編集**: DI設定の追加のみ可能
+
+> 目的：goctl再生成時にビジネスロジックを保護
 
 ### 4.2.3 RPC設定ファイル
 
-- [ ] RPC設定ファイルの作成
+- [ ] RPC設定ファイルの作成（CLAUDE.md命名規約準拠）
 ```bash
-vim /var/www/winyx/backend/user-rpc/etc/user.yaml
+vim /var/www/winyx/backend/user_rpc/etc/user_rpc.yaml
 ```
 
 ```yaml
-Name: user.rpc
+Name: user_rpc
 ListenOn: 127.0.0.1:9090  # 内部接続のみ
 Etcd:
   Hosts:
@@ -98,17 +139,24 @@ Etcd:
   Key: user.rpc
 
 Mysql:
-  DataSource: "${DB_USERNAME}:${DB_PASSWORD}@tcp(${DB_HOST}:${DB_PORT})/${DB_DATABASE}?charset=${DB_CHARSET}&parseTime=true&loc=Asia%2FTokyo"
+  DataSource: "winyx_app:Winyx$7377@tcp(127.0.0.1:3306)/winyx_core?charset=utf8mb4&parseTime=true&loc=Asia%2FTokyo"
 
 Cache:
-  - Host: ${REDIS_HOST}:${REDIS_PORT}
-    Pass: "${REDIS_PASSWORD}"
+  - Host: 127.0.0.1:6379
+    Pass: ""
     Type: node
 
 Log:
-  ServiceName: user-rpc
+  ServiceName: user_rpc
   Mode: console
   Level: info
+
+# Telemetry設定（監視用）
+Telemetry:
+  Name: user_rpc
+  Endpoint: http://localhost:14268/api/traces
+  Sampler: 1.0
+  Batcher: jaeger
 ```
 
 ### 4.2.4 RPCロジックの実装
@@ -159,6 +207,113 @@ func (l *GetUserLogic) GetUser(in *user.GetUserRequest) (*user.GetUserResponse, 
 }
 ```
 
+### 4.2.5 REST APIからRPCサービスの呼び出し
+
+#### REST APIゲートウェイからの内部RPC呼び出し
+
+- [ ] REST API設定にRPC接続を追加
+
+```yaml
+# backend/user_service/etc/user_service-api.yaml に追加
+Name: user_service
+Host: 0.0.0.0
+Port: 8888
+
+# RPC接続設定
+UserRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2379
+    Key: user.rpc
+  # または直接接続
+  # Target: 127.0.0.1:9090
+  # NonBlock: true
+```
+
+- [ ] ServiceContextにRPCクライアントを追加
+
+```go
+// backend/user_service/internal/svc/servicecontext.go
+package svc
+
+import (
+    "github.com/winyx/backend/user_service/internal/config"
+    "github.com/winyx/backend/user_rpc/userclient"
+    
+    "github.com/zeromicro/go-zero/zrpc"
+)
+
+type ServiceContext struct {
+    Config  config.Config
+    UserRpc userclient.User  // RPCクライアント追加
+    // ... 他のフィールド
+}
+
+func NewServiceContext(c config.Config) *ServiceContext {
+    return &ServiceContext{
+        Config: c,
+        // RPCクライアント初期化
+        UserRpc: userclient.NewUser(zrpc.MustNewClient(c.UserRpc)),
+        // ... 他の初期化
+    }
+}
+```
+
+- [ ] REST APIロジックからRPCを呼び出し
+
+```go
+// backend/user_service/internal/logic/userinfologic.go
+package logic
+
+import (
+    "context"
+    
+    "github.com/winyx/backend/user_service/internal/svc"
+    "github.com/winyx/backend/user_service/internal/types"
+    "github.com/winyx/backend/user_rpc/user"
+    
+    "github.com/zeromicro/go-zero/core/logx"
+)
+
+type UserInfoLogic struct {
+    logx.Logger
+    ctx    context.Context
+    svcCtx *svc.ServiceContext
+}
+
+func NewUserInfoLogic(ctx context.Context, svcCtx *svc.ServiceContext) *UserInfoLogic {
+    return &UserInfoLogic{
+        Logger: logx.WithContext(ctx),
+        ctx:    ctx,
+        svcCtx: svcCtx,
+    }
+}
+
+func (l *UserInfoLogic) UserInfo() (resp *types.UserInfoResp, err error) {
+    // JWTからユーザーIDを取得
+    userId := l.ctx.Value("userId").(int64)
+    
+    // RPCサービスを呼び出し
+    rpcResp, err := l.svcCtx.UserRpc.GetUser(l.ctx, &user.GetUserRequest{
+        Id: userId,
+    })
+    if err != nil {
+        logx.Errorf("failed to get user from rpc: %v", err)
+        return nil, err
+    }
+    
+    // レスポンスを変換
+    return &types.UserInfoResp{
+        Id:     rpcResp.Id,
+        Name:   rpcResp.Name,
+        Email:  rpcResp.Email,
+        Status: 1,
+    }, nil
+}
+```
+
+> 目的：RESTエンドポイントから内部RPCサービスを活用し、マイクロサービス間通信を実現
+
 ---
 
 ## 第3節 Next.jsからのRPC接続
@@ -185,8 +340,8 @@ import * as grpc from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
 import path from 'path';
 
-// Proto定義のロード
-const PROTO_PATH = path.join(process.cwd(), '../contracts/rpc/user.proto');
+// Proto定義のロード（CLAUDE.md規約準拠のパス）
+const PROTO_PATH = path.join(process.cwd(), '../contracts/user_service/user.proto');
 
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
   keepCase: true,
